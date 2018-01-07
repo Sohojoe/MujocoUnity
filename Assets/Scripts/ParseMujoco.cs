@@ -15,6 +15,12 @@ namespace xml
             parser._root = XElement.Load(path);
             return parser;
         }
+        static public ParseMujoco FromString(string str)
+        {
+            var parser = new ParseMujoco();
+            parser._root = XElement.Parse(str);
+            return parser;
+        }
         public string Test()
         {
             return Parse(_root);
