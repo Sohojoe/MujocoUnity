@@ -1,4 +1,5 @@
 
+using System.Linq;
 using UnityEngine;
 
 namespace MujocoUnity
@@ -55,55 +56,68 @@ namespace MujocoUnity
             }            
 			return vec3;
 		}
-		
+
+		static public float ParseGetMin(string rangeAsText)
+		{
+			string[] words = rangeAsText.Split(_delimiterChars);
+            var range = words.Select(x=>float.Parse(x));
+            return range.Min();
+		}
+		static public float ParseGetMax(string rangeAsText)
+		{
+			string[] words = rangeAsText.Split(_delimiterChars);
+            var range = words.Select(x=>float.Parse(x));
+            return range.Max();
+		}        
+
+
 		static public GameObject CreateBetweenPoints(this GameObject parent, Vector3 start, Vector3 end, float width)
 		{
-            // var startPos = start;
-            // var endPos = end;
-            // Vector3 centerPos = new Vector3(startPos.x + endPos.x, startPos.y + endPos.y) / 2;
 
-            // float scaleX = Mathf.Abs(startPos.x - endPos.x);
-            // float scaleY = Mathf.Abs(startPos.y - endPos.y);
-            // float scaleZ = Mathf.Abs(startPos.z - endPos.z);
+            // parent.AddComponent<MeshFilter>();
+            // parent.AddComponent<CapsuleCollider>();
+            // parent.GetComponent<CapsuleCollider>().height = 2f;
+            // parent.AddComponent<MeshRenderer>();
+            // parent.GetComponent<MeshFilter>().mesh = PrimitiveHelper.GetPrimitiveMesh(PrimitiveType.Capsule);
+            // var meshRenderer = parent.GetComponent <MeshRenderer>();
+            // meshRenderer.materials[0] = PrimitiveHelper.GetDefaultMaterial();
 
-            // centerPos.x -= 0.5f;
-            // centerPos.y += 0.5f;
-            // var instance = GameObject.Instantiate(prefab, centerPos, Quaternion.identity);
-            // instance.transform.position = centerPos;
-            // instance.transform.localScale = new Vector3(scaleX, scaleY, scaleZ);
-			// return instance;
+			// var offset = end - start;
+			// var scale = new Vector3(width, offset.magnitude / 2.0f, width);
+			// var position = start + (offset / 2.0f);
+			// parent.transform.up = offset;
+			// parent.transform.localScale = scale;
+            // parent.transform.localPosition = parent.transform.localPosition+position;
+			// return parent;
 
 			var offset = end - start;
 			var scale = new Vector3(width, offset.magnitude / 2.0f, width);
 			var position = start + (offset / 2.0f);
-
-			// var instance = GameObject.Instantiate(prefab, position, Quaternion.identity);
             var instance = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             instance.transform.parent = parent.transform;			
 			instance.transform.up = offset;
 			instance.transform.localScale = scale;
             instance.transform.localPosition = position;
-
-            // var capsuleCollider = instance.GetComponent<CapsuleCollider>();
-            // capsuleCollider.radius = width;
-
-            // var height = Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.y), Mathf.Abs(offset.z));
-            // capsuleCollider.height = height;
-
 			return instance;
 		}
 		static public GameObject CreateAtPoint(this GameObject parent, Vector3 position, float width)
 		{
 			var scale = new Vector3(width, width, width);
 
+            // parent.AddComponent<MeshFilter>();
+            // parent.AddComponent<SphereCollider>();
+            // parent.AddComponent<MeshRenderer>();
+            // parent.GetComponent<MeshFilter>().mesh = PrimitiveHelper.GetPrimitiveMesh(PrimitiveType.Sphere);
+            // var meshRenderer = parent.GetComponent <MeshRenderer>();
+            // meshRenderer.materials[0] = PrimitiveHelper.GetDefaultMaterial();
+			// parent.transform.localScale = scale;
+            // parent.transform.localPosition = parent.transform.localPosition+position;
+            // return parent;
+
             var instance = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             instance.transform.parent = parent.transform;			
 			instance.transform.localScale = scale;
             instance.transform.localPosition = position;
-
-            // var sphereCollider = instance.GetComponent<SphereCollider>();
-            // sphereCollider.radius = width * 2;
-            
 			return instance;
 		}
         

@@ -56,13 +56,20 @@ namespace MujocoUnity
         	// <option gravity="0 0 -9.81" integrator="RK4" timestep="0.02"/>
             // <size nstack="3000"/>
             // // worldbody
-            ParseBody(element.Element("worldbody"), "worldbody", this.gameObject);
+            ParseBody(element.Element("worldbody"), "worldbody", this.gameObject, null);
 	        // <actuator>		<motor gear="100" joint="slider" name="slide"/>
         }
-		void ParseBody(XElement xdoc, string bodyName, GameObject parent)
+		void ParseBody(XElement xdoc, string bodyName, GameObject parent, Joint parentJoint)
         {
             // ParseJoint(xdoc);
             var geom = ParseGeom(xdoc, parent);
+			if (parentJoint != null && geom)
+				parentJoint.connectedBody = geom.GetComponent<Rigidbody>();
+			var joint = ParseJoint(xdoc, geom);
+			// if (joint != null){
+			// 	joint.connectedBody = parentRigidbody;
+			// }
+			
             // ParseMotor(xdoc);
             // ParseTendon(xdoc);
 			// if (geom == null)
@@ -94,7 +101,8 @@ namespace MujocoUnity
                             break;
                     }
                 }
-				ParseBody(element, element.Attribute("name")?.Value, body);
+				// parentRigidbody = geom?.GetComponentInParent<Rigidbody>() ?? parentRigidbody;
+				ParseBody(element, element.Attribute("name")?.Value, body, joint);
             }
         }
 		GameObject ParseGeom(XElement xdoc, GameObject parent)
@@ -207,5 +215,92 @@ namespace MujocoUnity
             }
 			return geom;
         }
+		Joint ParseJoint(XElement xdoc, GameObject parent)
+		{
+            var name = "joint";
+			Joint joint= null;
+
+            var element = xdoc.Element(name);
+            if (element == null)
+                return joint;
+
+			var type = element.Attribute("type")?.Value;
+			if (type == null) {
+				print($"--- WARNING: ParseJoint: no type found. Ignoring ({element.ToString()}");
+				return joint;
+			}
+			string jointName = element.Attribute("name")?.Value;
+			switch (type)
+			{
+				case "hinge":
+					print($"ParseJoint: Creating type:{type} ");
+					parent.gameObject.AddComponent<HingeJoint> ();  
+					joint = parent.GetComponent<Joint>();
+					joint.name = jointName;
+					break;
+				default:
+					print($"--- WARNING: ParseJoint: {type} geom is not implemented. Ignoring ({element.ToString()}");
+					return joint;
+			}
+			HingeJoint hingeJoint = joint as HingeJoint;
+			
+            foreach (var attribute in element.Attributes())
+            {
+                switch (attribute.Name.LocalName)
+                {
+                    case "armature":
+                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "damping":
+                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "limited":
+                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+						hingeJoint.useLimits = bool.Parse(attribute.Value);
+                        break;
+        			// <joint axis="1 0 0" limited="true" name="slider" pos="0 0 0" range="-1 1" type="slide"/>
+                    case "axis":
+                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+						joint.axis = MujocoHelper.ParseVector3(attribute.Value);
+                        break;
+                    case "name":
+                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "pos":
+                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+						// joint.transform.localPosition = MujocoHelper.ParseVector3(attribute.Value);
+						joint.anchor = MujocoHelper.ParseVector3(attribute.Value);
+                        break;
+                    case "range":
+                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+						var limits = hingeJoint.limits;
+						limits.min = MujocoHelper.ParseGetMin(attribute.Value);
+						limits.max = MujocoHelper.ParseGetMax(attribute.Value);
+						hingeJoint.limits = limits;
+						hingeJoint.useLimits = true;
+                        break;
+                    case "type":
+                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "solimplimit":
+                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "solreflimit":
+                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "stiffness":
+                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "margin":
+                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    default: 
+                        Console.WriteLine($"*** MISSING --> {name}.{attribute.Name.LocalName}");                    
+                        throw new NotImplementedException(attribute.Name.LocalName);
+                        break;
+                }
+            }	
+			return joint;		
+		}		
 	}
 }
