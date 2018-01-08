@@ -10,62 +10,16 @@ namespace MujocoUnity
 	public class MujocoSpawner : MonoBehaviour {
 
 		public TextAsset MujocoXml;
-		public GameObject CapsulePrefab;
-		public GameObject SpherePrefab;
-		// public GameObject PlanePrefab;
-		// public GameObject SlidePrefab;
-		// public GameObject BoxPrefab;
 		
 		XElement _root;
 
-		
 
 		// Use this for initialization
 		void Start () {
 			LoadXml(MujocoXml.text);
 			Parse();
-			
-			// // // <geom fromto="0.0 0.0 0.0 0.2 0.2 0.0" name="aux_1_geom" size="0.08" type="capsule"/>
-			// var fromTo="0.0 0.0 0.0 0.2 0.2 0.0";
-			// // var c0 = CreateCylinderBetweenPoints(ParseFrom(fromTo), ParseTo(fromTo), float.Parse("0.08"));
-			// // c0.AddRigidBody();
-			// // c0.transform.parent = this.transform;
-			// // <geom fromto="0.0 0.0 0.0 -0.2 0.2 0.0" name="aux_2_geom" size="0.08" type="capsule"/>
-			// fromTo="0.0 0.0 0.0 -0.2 0.2 0.0";
-			// var c1 = CapsulePrefab.CreateBetweenPoints(MujocoHelper.ParseFrom(fromTo), MujocoHelper.ParseTo(fromTo), float.Parse("0.08"));
-			// c1.AddRigidBody();
-			// c1.transform.parent = this.transform;
-			// // <geom fromto="0.0 0.0 0.0 -0.4 0.4 0.0" name="right_ankle_geom" size="0.08" type="capsule"/>
-			// fromTo="0.0 0.0 0.0 -0.4 0.4 0.0";
-			// var c2 = CapsulePrefab.CreateBetweenPoints(MujocoHelper.ParseFrom(fromTo), MujocoHelper.ParseTo(fromTo), float.Parse("0.08"));
-			// c2.AddRigidBody();
-			// c2.transform.parent = this.transform;
-			// // <geom fromto="0.0 0.0 0.0 -0.4 -0.4 0.0" name="third_ankle_geom" size="0.08" type="capsule"/>
-			// fromTo="0.0 0.0 0.0 -0.4 -0.4 0.0";
-			// var c3 = CapsulePrefab.CreateBetweenPoints(MujocoHelper.ParseFrom(fromTo), MujocoHelper.ParseTo(fromTo), float.Parse("0.08"));
-			// c3.AddRigidBody();
-			// c3.transform.parent = this.transform;
-			// // <geom fromto="0.0 0.0 0.0 0.4 -0.4 0.0" name="fourth_ankle_geom" size="0.08" type="capsule"/>
-			// fromTo="0.0 0.0 0.0 0.4 -0.4 0.0";
-			// var c4 = CapsulePrefab.CreateBetweenPoints(MujocoHelper.ParseFrom(fromTo), MujocoHelper.ParseTo(fromTo), float.Parse("0.08"));
-			// c4.AddRigidBody();
-			// c4.transform.parent = this.transform;
-
-			// // var c0 = new ProceduralCapsule{
-
-			// // };
-			
-			// // c0.transform.parent = this.transform;
-			
-
-			// // var c1 = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-			// // c1.AddRigidBody();
-			// // c1.transform.parent = this.transform;
-			// // c1.SetStartEnd(new Vector3(0f, 0f, 0f), new Vector3(0.2f, 0.08f, 0.2f));
 		}
 
-
-		
 		// Update is called once per frame
 		void Update () {
 			
@@ -88,7 +42,8 @@ namespace MujocoUnity
                 switch (attribute.Name.LocalName)
                 {
                     case "model":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+						this.gameObject.name = attribute.Value;
                         break;
                     default:
                         throw new NotImplementedException();
@@ -114,18 +69,21 @@ namespace MujocoUnity
 			// 	return;
 
             var name = "body";
-            var element = xdoc.Element(name);
-            if (element != null) {
+            var elements = xdoc.Elements(name);
+            foreach (var element in elements) {
+				var body = new GameObject();
+				body.transform.parent = parent.transform;
                 foreach (var attribute in element.Attributes())
                 {
                     switch (attribute.Name.LocalName)
                     {
                         case "name":
-                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            //print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+							body.name = attribute.Value;
                             break;
                         case "pos":
                             // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
-							(geom ?? parent).transform.position = MujocoHelper.ParseVector3(attribute.Value);
+							body.transform.localPosition = MujocoHelper.ParseVector3(attribute.Value);
                             break;
                         case "quat":
                             print($"{name} {attribute.Name.LocalName}={attribute.Value}");
@@ -135,8 +93,8 @@ namespace MujocoUnity
                             throw new NotImplementedException(attribute.Name.LocalName);
                             break;
                     }
-                    ParseBody(element, element.Attribute("name")?.Value, geom ?? parent);
                 }
+				ParseBody(element, element.Attribute("name")?.Value, body);
             }
         }
 		GameObject ParseGeom(XElement xdoc, GameObject parent)
@@ -154,26 +112,29 @@ namespace MujocoUnity
 				return geom;
 			}
 			float size;
+			string geomName = element.Attribute("name")?.Value;
 			switch (type)
 			{
 				case "capsule":
 					size = float.Parse(element.Attribute("size")?.Value);
 					var fromto = element.Attribute("fromto").Value;
 					print($"ParseGeom: Creating type:{type} fromto:{fromto} size:{size}");
-					geom = CapsulePrefab.CreateBetweenPoints(MujocoHelper.ParseFrom(fromto), MujocoHelper.ParseTo(fromto), size);
+					geom = parent.CreateBetweenPoints(MujocoHelper.ParseFrom(fromto), MujocoHelper.ParseTo(fromto), size);
+					geom.name = geomName;
 					break;
 				case "sphere":
 					size = float.Parse(element.Attribute("size")?.Value);
 					var pos = element.Attribute("pos").Value;
 					print($"ParseGeom: Creating type:{type} pos:{pos} size:{size}");
-					geom = SpherePrefab.CreateAtPoint(MujocoHelper.ParseVector3(pos), size);
+					geom = parent.CreateAtPoint(MujocoHelper.ParseVector3(pos), size);
+					geom.name = geomName;
 					break;
 				default:
 					print($"--- WARNING: ParseGeom: {type} geom is not implemented. Ignoring ({element.ToString()}");
 					return geom;
 			}
 			geom.AddRigidBody();
-			geom.transform.parent = parent.transform;			
+			//geom.transform.parent = parent.transform;			
 			// TODO set collision based on size and fromto
 
 
@@ -193,8 +154,7 @@ namespace MujocoUnity
                         print($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "name":
-						geom.name = attribute.Value;
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "pos":
                         print($"{name} {attribute.Name.LocalName}={attribute.Value}");
