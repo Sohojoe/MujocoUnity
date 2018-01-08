@@ -2,13 +2,14 @@ using System;
 using System.IO;
 using System.Text;
 using System.Xml.Linq;
+using UnityEngine;
 
-
-namespace xml
+namespace MujocoUnity
 {
     public class ParseMujoco
     {
         XElement _root;
+
         static public ParseMujoco FromFile(string path)
         {
             var parser = new ParseMujoco();
@@ -25,6 +26,8 @@ namespace xml
         {
             return Parse(_root);
         }
+
+
         string Parse(XElement element)
         {
             StringBuilder result = new StringBuilder();

@@ -51,4 +51,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a532e373957504411bd01901bf361ad3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MujocoFilePath: MujocoXml/ant
+  MujocoXml: {fileID: 0}
+  CapsulePrefab: {fileID: 1445467318113176, guid: 405c2119438fc4bc692c2c457e12e21d,
+    type: 2}
+  SpherePrefab: {fileID: 1762098926533292, guid: 946fbdc0d61aa41e59bb7da54b3c2f8e,
+    type: 2}
