@@ -59,27 +59,19 @@ namespace MujocoUnity
             ParseBody(element.Element("worldbody"), "worldbody", this.gameObject, null);
 	        // <actuator>		<motor gear="100" joint="slider" name="slide"/>
         }
-		void ParseBody(XElement xdoc, string bodyName, GameObject parent, Joint parentJoint)
+		void ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject parentGeom)
         {
-            // ParseJoint(xdoc);
-            var geom = ParseGeom(xdoc, parent);
-			if (parentJoint != null && geom)
-				parentJoint.connectedBody = geom.GetComponent<Rigidbody>();
-			var joint = ParseJoint(xdoc, geom);
-			// if (joint != null){
-			// 	joint.connectedBody = parentRigidbody;
-			// }
-			
-            // ParseMotor(xdoc);
-            // ParseTendon(xdoc);
-			// if (geom == null)
-			// 	return;
+            var geom = ParseGeom(xdoc, parentBody);
+			Joint joint = null;
+			joint = ParseJoint(xdoc, parentGeom);
+            if (joint != null)
+                joint.connectedBody = geom.GetComponent<Rigidbody>();
 
             var name = "body";
             var elements = xdoc.Elements(name);
             foreach (var element in elements) {
 				var body = new GameObject();
-				body.transform.parent = parent.transform;
+				body.transform.parent = parentBody.transform;
                 foreach (var attribute in element.Attributes())
                 {
                     switch (attribute.Name.LocalName)
@@ -101,8 +93,7 @@ namespace MujocoUnity
                             break;
                     }
                 }
-				// parentRigidbody = geom?.GetComponentInParent<Rigidbody>() ?? parentRigidbody;
-				ParseBody(element, element.Attribute("name")?.Value, body, joint);
+				ParseBody(element, element.Attribute("name")?.Value, body, geom ?? parentGeom);
             }
         }
 		GameObject ParseGeom(XElement xdoc, GameObject parent)
@@ -215,7 +206,14 @@ namespace MujocoUnity
             }
 			return geom;
         }
-		Joint ParseJoint(XElement xdoc, GameObject parent)
+		Joint FixedJoint(GameObject parent)
+		{
+			parent.gameObject.AddComponent<FixedJoint> ();  
+			var joint = parent.GetComponent<Joint>();
+			return joint;
+		}
+        //GameObject parentGeom, GameObject parentBody)
+		Joint ParseJoint(XElement xdoc, GameObject parentGeom)
 		{
             var name = "joint";
 			Joint joint= null;
@@ -234,8 +232,8 @@ namespace MujocoUnity
 			{
 				case "hinge":
 					print($"ParseJoint: Creating type:{type} ");
-					parent.gameObject.AddComponent<HingeJoint> ();  
-					joint = parent.GetComponent<Joint>();
+					parentGeom.gameObject.AddComponent<HingeJoint> ();
+					joint = parentGeom.GetComponent<Joint>();
 					joint.name = jointName;
 					break;
 				default:
@@ -262,14 +260,15 @@ namespace MujocoUnity
                     case "axis":
                         // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
 						joint.axis = MujocoHelper.ParseVector3(attribute.Value);
+						// joint.axis = MujocoHelper.ParseVector3NoFlipYZ(attribute.Value);
                         break;
                     case "name":
                         // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "pos":
                         // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
-						// joint.transform.localPosition = MujocoHelper.ParseVector3(attribute.Value);
-						joint.anchor = MujocoHelper.ParseVector3(attribute.Value);
+						//joint.transform.localPosition += MujocoHelper.ParseVector3(attribute.Value);
+						// joint.anchor = MujocoHelper.ParseVector3NoFlipYZ(attribute.Value);
                         break;
                     case "range":
                         // print($"{name} {attribute.Name.LocalName}={attribute.Value}");

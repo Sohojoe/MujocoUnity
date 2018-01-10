@@ -28,6 +28,16 @@ namespace MujocoUnity
     
     	static char[] _delimiterChars = { ' ', ',', ':', '\t' };
 
+        static public Vector3 ParseVector3NoFlipYZ(string str)
+		{
+			string[] words = str.Split(_delimiterChars);
+			float x = float.Parse(words[0]);
+			float y = float.Parse(words[1]);
+			float z = float.Parse(words[2]);
+			var vec3 = new Vector3(x,y,z);
+			return vec3;
+		}
+
 		static public Vector3 ParseVector3(string str)
 		{
 			string[] words = str.Split(_delimiterChars);
