@@ -237,7 +237,7 @@ namespace MujocoUnity
 					joint.name = jointName;
 					break;
 				default:
-					print($"--- WARNING: ParseJoint: {type} geom is not implemented. Ignoring ({element.ToString()}");
+					print($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
 					return joint;
 			}
 			HingeJoint hingeJoint = joint as HingeJoint;

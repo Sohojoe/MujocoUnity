@@ -101,7 +101,7 @@ namespace MujocoUnity
 			// return parent;
 
 			var offset = end - start;
-			var scale = new Vector3(width, offset.magnitude / 2.0f, width);
+			var scale = new Vector3(width*2, offset.magnitude / 2.0f, width*2);
 			var position = start + (offset / 2.0f);
             var instance = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             instance.transform.parent = parent.transform;			
@@ -126,7 +126,7 @@ namespace MujocoUnity
 
             var instance = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             instance.transform.parent = parent.transform;			
-			instance.transform.localScale = scale;
+			instance.transform.localScale = scale*2;
             instance.transform.localPosition = position;
 			return instance;
 		}
