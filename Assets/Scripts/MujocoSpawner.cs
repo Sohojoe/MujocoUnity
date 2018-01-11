@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Xml.Linq;
 using UnityEngine;
@@ -59,13 +60,14 @@ namespace MujocoUnity
             ParseBody(element.Element("worldbody"), "worldbody", this.gameObject, null);
 	        // <actuator>		<motor gear="100" joint="slider" name="slide"/>
         }
-		void ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject parentGeom)
+		void ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject parentGeom, XElement parentXdoc = null)
         {
             var geom = ParseGeom(xdoc, parentBody);
-			Joint joint = null;
-			joint = ParseJoint(xdoc, parentGeom);
-            if (joint != null)
-                joint.connectedBody = geom.GetComponent<Rigidbody>();
+            if (xdoc.Element("joint") != null && parentGeom != null && geom != null) {
+                ParseJoint(xdoc, parentGeom, geom);
+            }
+            else if (parentXdoc?.Element("joint") != null && parentGeom != null && geom != null) 
+                ParseJoint(parentXdoc, parentGeom, geom);
 
             var name = "body";
             var elements = xdoc.Elements(name);
@@ -93,7 +95,7 @@ namespace MujocoUnity
                             break;
                     }
                 }
-				ParseBody(element, element.Attribute("name")?.Value, body, geom ?? parentGeom);
+				ParseBody(element, element.Attribute("name")?.Value, body, geom ?? parentGeom, xdoc);
             }
         }
 		GameObject ParseGeom(XElement xdoc, GameObject parent)
@@ -213,7 +215,7 @@ namespace MujocoUnity
 			return joint;
 		}
         //GameObject parentGeom, GameObject parentBody)
-		Joint ParseJoint(XElement xdoc, GameObject parentGeom)
+		Joint ParseJoint(XElement xdoc, GameObject parentGeom, GameObject childGeom)
 		{
             var name = "joint";
 			Joint joint= null;
@@ -233,14 +235,23 @@ namespace MujocoUnity
 				case "hinge":
 					print($"ParseJoint: Creating type:{type} ");
 					parentGeom.gameObject.AddComponent<HingeJoint> ();
-					joint = parentGeom.GetComponent<Joint>();
-					joint.name = jointName;
+					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
+					//joint.name = jointName;
+                    joint.connectedBody = childGeom.GetComponent<Rigidbody>();
+					break;
+				case "free":
+					print($"ParseJoint: Creating type:{type} ");
+					parentGeom.gameObject.AddComponent<FixedJoint> ();
+					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
+					//joint.name = jointName;
+                    joint.connectedBody = childGeom.GetComponent<Rigidbody>();
 					break;
 				default:
 					print($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
 					return joint;
 			}
 			HingeJoint hingeJoint = joint as HingeJoint;
+            FixedJoint fixedJoint = joint as FixedJoint;
 			
             foreach (var attribute in element.Attributes())
             {
@@ -254,7 +265,7 @@ namespace MujocoUnity
                         break;
                     case "limited":
                         // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
-						hingeJoint.useLimits = bool.Parse(attribute.Value);
+						if (hingeJoint != null) hingeJoint.useLimits = bool.Parse(attribute.Value);
                         break;
         			// <joint axis="1 0 0" limited="true" name="slider" pos="0 0 0" range="-1 1" type="slide"/>
                     case "axis":
