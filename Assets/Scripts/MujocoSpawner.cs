@@ -57,17 +57,21 @@ namespace MujocoUnity
         	// <option gravity="0 0 -9.81" integrator="RK4" timestep="0.02"/>
             // <size nstack="3000"/>
             // // worldbody
-            ParseBody(element.Element("worldbody"), "worldbody", this.gameObject, null);
+            var joints = ParseBody(element.Element("worldbody"), "worldbody", this.gameObject, null);
+            ParseGears(element.Element("actuator"), joints);
 	        // <actuator>		<motor gear="100" joint="slider" name="slide"/>
         }
-		void ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject parentGeom, XElement parentXdoc = null)
+		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject parentGeom, XElement parentXdoc = null)
         {
+            var joints = new List<KeyValuePair<string, Joint>>();
+            List<KeyValuePair<string, Joint>> newJoints = null;
             var geom = ParseGeom(xdoc, parentBody);
             if (xdoc.Element("joint") != null && parentGeom != null && geom != null) {
-                ParseJoint(xdoc, parentGeom, geom);
+                newJoints = ParseJoint(xdoc, parentGeom, geom);
             }
             else if (parentXdoc?.Element("joint") != null && parentGeom != null && geom != null) 
-                ParseJoint(parentXdoc, parentGeom, geom);
+                newJoints = ParseJoint(parentXdoc, parentGeom, geom);
+            if (newJoints != null) joints.AddRange(newJoints);
 
             var name = "body";
             var elements = xdoc.Elements(name);
@@ -95,8 +99,10 @@ namespace MujocoUnity
                             break;
                     }
                 }
-				ParseBody(element, element.Attribute("name")?.Value, body, geom ?? parentGeom, xdoc);
+				newJoints = ParseBody(element, element.Attribute("name")?.Value, body, geom ?? parentGeom, xdoc);
+                if (newJoints != null) joints.AddRange(newJoints);
             }
+            return joints;
         }
 		GameObject ParseGeom(XElement xdoc, GameObject parent)
         {
@@ -215,20 +221,21 @@ namespace MujocoUnity
 			return joint;
 		}
         //GameObject parentGeom, GameObject parentBody)
-		Joint ParseJoint(XElement xdoc, GameObject parentGeom, GameObject childGeom)
+		List<KeyValuePair<string, Joint>> ParseJoint(XElement xdoc, GameObject parentGeom, GameObject childGeom)
 		{
             var name = "joint";
-			Joint joint= null;
+			var joints = new List<KeyValuePair<string, Joint>>();
 
             var element = xdoc.Element(name);
             if (element == null)
-                return joint;
+                return joints;
 
 			var type = element.Attribute("type")?.Value;
 			if (type == null) {
 				print($"--- WARNING: ParseJoint: no type found. Ignoring ({element.ToString()}");
-				return joint;
+				return joints;
 			}
+            Joint joint = null;
 			string jointName = element.Attribute("name")?.Value;
 			switch (type)
 			{
@@ -248,7 +255,7 @@ namespace MujocoUnity
 					break;
 				default:
 					print($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
-					return joint;
+					return joints;
 			}
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
@@ -309,8 +316,77 @@ namespace MujocoUnity
                         throw new NotImplementedException(attribute.Name.LocalName);
                         break;
                 }
-            }	
-			return joint;		
+            }
+            if (joint != null)
+                joints.Add(new KeyValuePair<string,Joint>(jointName, joint));	
+			return joints;
 		}		
+		void ParseGears(XElement xdoc, List<KeyValuePair<string, Joint>>  joints)
+        {
+            var name = "motor";
+
+            var elements = xdoc?.Elements(name);
+            if (elements == null)
+                return;
+            foreach (var element in elements)
+            {
+                ParseGear(element, joints);
+            }
+
+        }
+		void ParseGear(XElement element, List<KeyValuePair<string, Joint>>  joints)
+        {
+
+			string jointName = element.Attribute("joint")?.Value;
+			if (jointName == null) {
+				print($"--- WARNING: ParseGears: no jointName found. Ignoring ({element.ToString()}");
+				return;
+			}
+            var matches = joints.Where(x=>x.Key == jointName)?.Select(x=>x.Value);
+            if(matches == null){
+				print($"--- ERROR: ParseGears: joint:'{jointName}' was not found in joints. Ignoring ({element.ToString()}");
+				return;                
+            }
+
+            foreach (Joint joint in matches)
+            {
+                HingeJoint hingeJoint = joint as HingeJoint;
+                JointSpring spring = new JointSpring(); 
+                if (hingeJoint != null) {
+                    hingeJoint.useSpring = true;
+                    spring = hingeJoint.spring;
+                }
+                foreach (var attribute in element.Attributes())
+                {
+                    switch (attribute.Name.LocalName)
+                    {
+                        case "joint":
+                            break;
+                        case "ctrllimited":
+                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        case "ctrlrange":
+                            // TODO figure out how to pass this to the controller
+                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        case "gear":
+                            if (hingeJoint != null)
+                                spring.spring = float.Parse(attribute.Value);
+                            //print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        case "name":
+                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        default: 
+                            Console.WriteLine($"*** MISSING --> {name}.{attribute.Name.LocalName}");                    
+                            throw new NotImplementedException(attribute.Name.LocalName);
+                            break;
+                    }
+                }
+                if (hingeJoint != null) {
+                    hingeJoint.spring = spring;
+                }
+            }
+        }
 	}
 }
