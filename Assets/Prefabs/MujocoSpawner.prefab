@@ -20,6 +20,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4114328417322356}
   - component: {fileID: 114930587501614892}
+  - component: {fileID: 114652901231369746}
   m_Layer: 0
   m_Name: MujocoSpawner
   m_TagString: Untagged
@@ -40,6 +41,20 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &114652901231369746
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1176651103004916}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2a639ea3e5c84c84bb9eb8b183cb903, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  applyRandomToAll: 1
+  applyTargets: 0
+  targets: []
 --- !u!114 &114930587501614892
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -52,7 +67,3 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MujocoXml: {fileID: 0}
-  CapsulePrefab: {fileID: 1445467318113176, guid: 405c2119438fc4bc692c2c457e12e21d,
-    type: 2}
-  SpherePrefab: {fileID: 1762098926533292, guid: 946fbdc0d61aa41e59bb7da54b3c2f8e,
-    type: 2}

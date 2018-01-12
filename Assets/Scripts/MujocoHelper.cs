@@ -67,6 +67,15 @@ namespace MujocoUnity
 			return vec3;
 		}
 
+		static public Vector2 ParseVector2(string str)
+		{
+			string[] words = str.Split(_delimiterChars);
+			float x = float.Parse(words[0]);
+			float y = float.Parse(words[1]);
+			var vec2 = new Vector2(x,y);
+			return vec2;
+		}
+
 		static public float ParseGetMin(string rangeAsText)
 		{
 			string[] words = rangeAsText.Split(_delimiterChars);

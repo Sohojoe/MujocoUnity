@@ -58,8 +58,10 @@ namespace MujocoUnity
             // <size nstack="3000"/>
             // // worldbody
             var joints = ParseBody(element.Element("worldbody"), "worldbody", this.gameObject, null);
-            ParseGears(element.Element("actuator"), joints);
 	        // <actuator>		<motor gear="100" joint="slider" name="slide"/>
+            var mujocoJoints = ParseGears(element.Element("actuator"), joints);
+            
+            GetComponent<MujocoController>().SetMujocoJoints(mujocoJoints);
         }
 		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject parentGeom, XElement parentXdoc = null)
         {
@@ -321,31 +323,33 @@ namespace MujocoUnity
                 joints.Add(new KeyValuePair<string,Joint>(jointName, joint));	
 			return joints;
 		}		
-		void ParseGears(XElement xdoc, List<KeyValuePair<string, Joint>>  joints)
+		List<MujocoJoint>  ParseGears(XElement xdoc, List<KeyValuePair<string, Joint>>  joints)
         {
+            var mujocoJoints = new List<MujocoJoint>();
             var name = "motor";
 
             var elements = xdoc?.Elements(name);
             if (elements == null)
-                return;
+                return mujocoJoints;
             foreach (var element in elements)
             {
-                ParseGear(element, joints);
+                mujocoJoints.AddRange(ParseGear(element, joints));
             }
-
+            return mujocoJoints;
         }
-		void ParseGear(XElement element, List<KeyValuePair<string, Joint>>  joints)
+		List<MujocoJoint> ParseGear(XElement element, List<KeyValuePair<string, Joint>>  joints)
         {
+            var mujocoJoints = new List<MujocoJoint>();
 
 			string jointName = element.Attribute("joint")?.Value;
 			if (jointName == null) {
 				print($"--- WARNING: ParseGears: no jointName found. Ignoring ({element.ToString()}");
-				return;
+				return mujocoJoints;
 			}
             var matches = joints.Where(x=>x.Key == jointName)?.Select(x=>x.Value);
             if(matches == null){
 				print($"--- ERROR: ParseGears: joint:'{jointName}' was not found in joints. Ignoring ({element.ToString()}");
-				return;                
+				return mujocoJoints;                
             }
 
             foreach (Joint joint in matches)
@@ -356,6 +360,10 @@ namespace MujocoUnity
                     hingeJoint.useSpring = true;
                     spring = hingeJoint.spring;
                 }
+                var mujocoJoint = new MujocoJoint{
+                    Joint = joint,
+                    JointName = jointName,
+                };
                 foreach (var attribute in element.Attributes())
                 {
                     switch (attribute.Name.LocalName)
@@ -363,19 +371,23 @@ namespace MujocoUnity
                         case "joint":
                             break;
                         case "ctrllimited":
-                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            var ctrlLimited = bool.Parse(attribute.Value);
+                            mujocoJoint.CtrlLimited = ctrlLimited;
                             break;
                         case "ctrlrange":
-                            // TODO figure out how to pass this to the controller
-                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            var ctrlRange = MujocoHelper.ParseVector2(attribute.Value);
+                            mujocoJoint.CtrlRange = ctrlRange;
                             break;
                         case "gear":
+                            var gear = float.Parse(attribute.Value);
+                            mujocoJoint.Gear = gear;
                             if (hingeJoint != null)
-                                spring.spring = float.Parse(attribute.Value);
+                                spring.spring = gear;
                             //print($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             break;
                         case "name":
-                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            var objName = attribute.Value;
+                            mujocoJoint.Name = objName;
                             break;
                         default: 
                             Console.WriteLine($"*** MISSING --> {name}.{attribute.Name.LocalName}");                    
@@ -386,7 +398,9 @@ namespace MujocoUnity
                 if (hingeJoint != null) {
                     hingeJoint.spring = spring;
                 }
+                mujocoJoints.Add(mujocoJoint);
             }
+            return mujocoJoints;
         }
 	}
 }
