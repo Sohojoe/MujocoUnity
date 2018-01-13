@@ -19,6 +19,26 @@ namespace MujocoUnity
         {
             _mujocoJoints = mujocoJoints;
             targets = Enumerable.Repeat(0f, _mujocoJoints.Count).ToArray();
+            if (CameraTarget != null && _mujocoJoints != null) {
+                var target = FindTopMesh(_mujocoJoints.FirstOrDefault()?.Joint.gameObject, null);
+                CameraTarget.GetComponent<SmoothFollow>().target = target.transform;
+            }
+        }
+        GameObject FindTopMesh(GameObject curNode, GameObject topmostNode = null)
+        {
+            var meshRenderer = curNode.GetComponent<MeshRenderer>();
+            if (meshRenderer != null)
+                topmostNode = meshRenderer.gameObject;
+            var root = curNode.transform.root.gameObject;
+            var meshRenderers = root.GetComponentsInChildren<MeshRenderer>();
+            if (meshRenderers != null && meshRenderers.Length >0)
+                topmostNode = meshRenderers[0].gameObject;
+            
+            // var parent = curNode.transform.parent;//curNode.GetComponentInParent<Transform>()?.gameObject;
+            // if (parent != null)
+            //     return FindTopMesh(curNode, topmostNode);
+            return (topmostNode);
+            
         }
         void Start () {
             

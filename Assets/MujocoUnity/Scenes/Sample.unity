@@ -298,6 +298,11 @@ Prefab:
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 114652901231369746, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: CameraTarget
+      value: 
+      objectReference: {fileID: 1840315761}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 41661c22107be4a20af7212d6eb0d729, type: 2}
   m_IsPrefabParent: 0
@@ -312,6 +317,7 @@ GameObject:
   - component: {fileID: 1840315764}
   - component: {fileID: 1840315763}
   - component: {fileID: 1840315762}
+  - component: {fileID: 1840315766}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -382,3 +388,20 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1840315766
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 1840315761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee4f76fb30a6846c6b582ea5a57d7225, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 0}
+  distance: 2.125
+  height: 0.2
+  clampToFloor: 0
+  heightDamping: 5
+  rotationDamping: 0
