@@ -7,6 +7,8 @@ namespace MujocoUnity
 {
     public class MujocoController : MonoBehaviour
     {
+        public GameObject CameraTarget;
+
         public bool applyRandomToAll;
         public bool applyTargets;
         public float[] targets;

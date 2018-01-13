@@ -52,6 +52,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f2a639ea3e5c84c84bb9eb8b183cb903, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  CameraTarget: {fileID: 0}
   applyRandomToAll: 1
   applyTargets: 0
   targets: []
@@ -67,3 +68,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MujocoXml: {fileID: 0}
+  Material: {fileID: 2100000, guid: 9013613e105254620b29c7301046af30, type: 2}

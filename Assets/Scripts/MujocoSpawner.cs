@@ -11,6 +11,7 @@ namespace MujocoUnity
 	public class MujocoSpawner : MonoBehaviour {
 
 		public TextAsset MujocoXml;
+        public Material Material;
 		
 		XElement _root;
 
@@ -62,6 +63,12 @@ namespace MujocoUnity
             var mujocoJoints = ParseGears(element.Element("actuator"), joints);
             
             GetComponent<MujocoController>().SetMujocoJoints(mujocoJoints);
+            if (Material != null)
+                foreach (var item in GetComponentsInChildren<Renderer>())
+                {
+                    item.material = Material;
+                }
+            
         }
 		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject parentGeom, XElement parentXdoc = null)
         {
@@ -80,6 +87,7 @@ namespace MujocoUnity
             foreach (var element in elements) {
 				var body = new GameObject();
 				body.transform.parent = parentBody.transform;
+                
                 foreach (var attribute in element.Attributes())
                 {
                     switch (attribute.Name.LocalName)
