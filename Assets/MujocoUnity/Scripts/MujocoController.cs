@@ -7,20 +7,21 @@ namespace MujocoUnity
 {
     public class MujocoController : MonoBehaviour
     {
+        public MujocoJoint[] MujocoJoints;
+        
         public GameObject CameraTarget;
 
         public bool applyRandomToAll;
         public bool applyTargets;
         public float[] targets;
 
-        List<MujocoJoint> _mujocoJoints;
 
         public void SetMujocoJoints(List<MujocoJoint> mujocoJoints)
         {
-            _mujocoJoints = mujocoJoints;
-            targets = Enumerable.Repeat(0f, _mujocoJoints.Count).ToArray();
-            if (CameraTarget != null && _mujocoJoints != null) {
-                var target = FindTopMesh(_mujocoJoints.FirstOrDefault()?.Joint.gameObject, null);
+            MujocoJoints = mujocoJoints.ToArray();
+            targets = Enumerable.Repeat(0f, MujocoJoints.Length).ToArray();
+            if (CameraTarget != null && MujocoJoints != null) {
+                var target = FindTopMesh(MujocoJoints.FirstOrDefault()?.Joint.gameObject, null);
                 CameraTarget.GetComponent<SmoothFollow>().target = target.transform;
             }
         }
@@ -47,14 +48,14 @@ namespace MujocoUnity
         // Update is called once per frame
         void Update () 
         {
-            if (_mujocoJoints == null || _mujocoJoints.Count ==0)
+            if (MujocoJoints == null || MujocoJoints.Length ==0)
                 return;
-            for (int i = 0; i < _mujocoJoints.Count; i++)
+            for (int i = 0; i < MujocoJoints.Length; i++)
             {
                 if (applyRandomToAll)
-                    ApplyTarget(_mujocoJoints[i], Random.value);
+                    ApplyTarget(MujocoJoints[i], Random.value);
                 else if (applyTargets)
-                    ApplyTarget(_mujocoJoints[i], targets[i]);
+                    ApplyTarget(MujocoJoints[i], targets[i]);
             }
         }
 
