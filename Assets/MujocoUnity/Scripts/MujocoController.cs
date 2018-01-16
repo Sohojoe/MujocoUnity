@@ -22,7 +22,9 @@ namespace MujocoUnity
             targets = Enumerable.Repeat(0f, MujocoJoints.Length).ToArray();
             if (CameraTarget != null && MujocoJoints != null) {
                 var target = FindTopMesh(MujocoJoints.FirstOrDefault()?.Joint.gameObject, null);
-                CameraTarget.GetComponent<SmoothFollow>().target = target.transform;
+                var smoothFollow = CameraTarget.GetComponent<SmoothFollow>();
+                if (smoothFollow != null) 
+                    smoothFollow.target = target.transform;
             }
         }
         GameObject FindTopMesh(GameObject curNode, GameObject topmostNode = null)
@@ -53,25 +55,34 @@ namespace MujocoUnity
             for (int i = 0; i < MujocoJoints.Length; i++)
             {
                 if (applyRandomToAll)
-                    ApplyTarget(MujocoJoints[i], Random.value);
+                    ApplyAction(MujocoJoints[i]);
                 else if (applyTargets)
-                    ApplyTarget(MujocoJoints[i], targets[i]);
+                    ApplyAction(MujocoJoints[i], targets[i]);
             }
         }
 
-        void ApplyTarget(MujocoJoint mJoint, float target)
+		void ApplyAction(MujocoJoint mJoint, float? target = null)
         {
             HingeJoint hingeJoint = mJoint.Joint as HingeJoint;
             if (hingeJoint != null)
             {
+	            var inputScale = mJoint.CtrlRange.y - mJoint.CtrlRange.x;
+                if (!target.HasValue) // handle random
+                    target = Random.value * inputScale + mJoint.CtrlRange.x;
+
                 JointSpring js;
                 js = hingeJoint.spring;
-                var safeTarget = Mathf.Clamp(target, mJoint.CtrlRange.x, mJoint.CtrlRange.y);
+                var inputTarget = Mathf.Clamp(target.Value, mJoint.CtrlRange.x, mJoint.CtrlRange.y);
+                if (mJoint.CtrlRange.x < 0)
+                    inputTarget = Mathf.Abs(mJoint.CtrlRange.x) + inputTarget;
+                else
+                    inputTarget = inputTarget - Mathf.Abs(mJoint.CtrlRange.x);
+                inputTarget /= inputScale;
                 var min = hingeJoint.limits.min;
                 var max = hingeJoint.limits.max;
-                var scale = max-min;
-                var scaledTarget = min+(safeTarget * scale);
-                js.targetPosition = scaledTarget;
+                var outputScale = max-min;
+                var outputTarget = min+(inputTarget * outputScale);
+                js.targetPosition = outputTarget;
                 hingeJoint.spring = js;
             }        
         }

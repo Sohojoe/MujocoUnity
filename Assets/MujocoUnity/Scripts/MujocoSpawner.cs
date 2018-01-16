@@ -12,14 +12,24 @@ namespace MujocoUnity
 
 		public TextAsset MujocoXml;
         public Material Material;
+        public PhysicMaterial PhysicMaterial;
 		
 		XElement _root;
+
+        bool _hasParsed;
+        public void SpawnFromXml()
+        {
+            if (_hasParsed)
+                return;
+			LoadXml(MujocoXml.text);
+			Parse();
+            _hasParsed = true;
+        }
 
 
 		// Use this for initialization
 		void Start () {
-			LoadXml(MujocoXml.text);
-			Parse();
+            SpawnFromXml();
 		}
 
 		// Update is called once per frame
@@ -68,6 +78,12 @@ namespace MujocoUnity
                 {
                     item.material = Material;
                 }
+            if (PhysicMaterial != null)
+                foreach (var item in GetComponentsInChildren<Collider>())
+                {
+                    item.material = PhysicMaterial;
+                }
+            // 
             
         }
 		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject parentGeom, XElement parentXdoc = null)
