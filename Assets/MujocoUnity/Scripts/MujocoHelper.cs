@@ -28,12 +28,25 @@ namespace MujocoUnity
     
     	static char[] _delimiterChars = { ' ', ',', ':', '\t' };
 
+		static float Evaluate(string expression)  
+		{
+			var doc = new System.Xml.XPath.XPathDocument(new System.IO.StringReader("<r/>"));
+			var nav = doc.CreateNavigator();
+			var newString = expression;
+			newString = (new System.Text.RegularExpressions.Regex(@"([\+\-\*])")).Replace(newString, " ${1} ");
+			newString = newString.Replace("/", " div ").Replace("%", " mod ");
+			var res = nav.Evaluate("number(" + newString + ")");
+			double d = (double) res;
+			return (float)d;
+		} 
+		
+
         static public Vector3 ParseVector3NoFlipYZ(string str)
 		{
 			string[] words = str.Split(_delimiterChars);
-			float x = float.Parse(words[0]);
-			float y = float.Parse(words[1]);
-			float z = float.Parse(words[2]);
+			float x = Evaluate(words[0]);
+			float y = Evaluate(words[1]);
+			float z = Evaluate(words[2]);
 			var vec3 = new Vector3(x,y,z);
 			return vec3;
 		}
@@ -41,9 +54,9 @@ namespace MujocoUnity
 		static public Vector3 ParseVector3(string str)
 		{
 			string[] words = str.Split(_delimiterChars);
-			float x = float.Parse(words[0]);
-			float y = float.Parse(words[1]);
-			float z = float.Parse(words[2]);
+			float x = Evaluate(words[0]);
+			float y = Evaluate(words[1]);
+			float z = Evaluate(words[2]);
 			var vec3 = new Vector3(x,y,z);
             if (MujocoFlipYZ) {
     			vec3 = new Vector3(x,z,y);
@@ -57,9 +70,9 @@ namespace MujocoUnity
 		static public Vector3 ParseTo(string fromTo)
 		{
 			string[] words = fromTo.Split(_delimiterChars);
-			float x = float.Parse(words[3]);
-			float y = float.Parse(words[4]);
-			float z = float.Parse(words[5]);
+			float x = Evaluate(words[3]);
+			float y = Evaluate(words[4]);
+			float z = Evaluate(words[5]);
 			var vec3 = new Vector3(x,y,z);
             if (MujocoFlipYZ) {
     			vec3 = new Vector3(x,z,y);
@@ -70,8 +83,8 @@ namespace MujocoUnity
 		static public Vector2 ParseVector2(string str)
 		{
 			string[] words = str.Split(_delimiterChars);
-			float x = float.Parse(words[0]);
-			float y = float.Parse(words[1]);
+			float x = Evaluate(words[0]);
+			float y = Evaluate(words[1]);
 			var vec2 = new Vector2(x,y);
 			return vec2;
 		}
