@@ -17,6 +17,7 @@ namespace MujocoUnity
 		XElement _root;
 
         bool _hasParsed;
+        bool _useWorldSpace;
         public void SpawnFromXml()
         {
             if (_hasParsed)
@@ -48,6 +49,8 @@ namespace MujocoUnity
 			XElement element = _root;
             var name = element.Name.LocalName;
             print($"- Begin");
+
+            ParseCompilerOptions(_root);
 
             foreach (var attribute in element.Attributes())
             {
@@ -84,8 +87,39 @@ namespace MujocoUnity
                     item.material = PhysicMaterial;
                 }
             // 
-            
         }
+
+        void ParseCompilerOptions(XElement xdoc)
+        {
+            var name = "compiler";
+            var elements = xdoc.Elements(name);
+            foreach (var element in elements) {
+                foreach (var attribute in element.Attributes())
+                {
+                    switch (attribute.Name.LocalName)
+                    {
+                        case "angle":
+                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        case "coordinate":
+                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            if (attribute.Value.ToLower() == "global")
+                                _useWorldSpace = true;
+                            else if (attribute.Value.ToLower() == "local")
+                                _useWorldSpace = false;
+                            break;
+                        case "inertiafromgeom":
+                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        default:
+                            Console.WriteLine($"*** MISSING --> {name}.{attribute.Name.LocalName}");
+                            throw new NotImplementedException(attribute.Name.LocalName);
+                            break;
+                    }
+                }
+            }
+        }
+
 		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject parentGeom, XElement parentXdoc = null)
         {
             var joints = new List<KeyValuePair<string, Joint>>();
@@ -114,7 +148,10 @@ namespace MujocoUnity
                             break;
                         case "pos":
                             // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
-							body.transform.localPosition = MujocoHelper.ParseVector3(attribute.Value);
+                            if (_useWorldSpace)
+    							body.transform.position = MujocoHelper.ParseVector3(attribute.Value);
+                            else
+    							body.transform.localPosition = MujocoHelper.ParseVector3(attribute.Value);
                             break;
                         case "quat":
                             print($"{name} {attribute.Name.LocalName}={attribute.Value}");
@@ -152,14 +189,14 @@ namespace MujocoUnity
 					size = float.Parse(element.Attribute("size")?.Value);
 					var fromto = element.Attribute("fromto").Value;
 					print($"ParseGeom: Creating type:{type} fromto:{fromto} size:{size}");
-					geom = parent.CreateBetweenPoints(MujocoHelper.ParseFrom(fromto), MujocoHelper.ParseTo(fromto), size);
+					geom = parent.CreateBetweenPoints(MujocoHelper.ParseFrom(fromto), MujocoHelper.ParseTo(fromto), size, _useWorldSpace);
 					geom.name = geomName;
 					break;
 				case "sphere":
 					size = float.Parse(element.Attribute("size")?.Value);
 					var pos = element.Attribute("pos").Value;
 					print($"ParseGeom: Creating type:{type} pos:{pos} size:{size}");
-					geom = parent.CreateAtPoint(MujocoHelper.ParseVector3(pos), size);
+					geom = parent.CreateAtPoint(MujocoHelper.ParseVector3(pos), size, _useWorldSpace);
 					geom.name = geomName;
 					break;
 				default:

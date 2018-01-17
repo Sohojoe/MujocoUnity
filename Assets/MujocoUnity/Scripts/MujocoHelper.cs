@@ -92,18 +92,18 @@ namespace MujocoUnity
 		static public float ParseGetMin(string rangeAsText)
 		{
 			string[] words = rangeAsText.Split(_delimiterChars);
-            var range = words.Select(x=>float.Parse(x));
+            var range = words.Select(x=>Evaluate(x));
             return range.Min();
 		}
 		static public float ParseGetMax(string rangeAsText)
 		{
 			string[] words = rangeAsText.Split(_delimiterChars);
-            var range = words.Select(x=>float.Parse(x));
+            var range = words.Select(x=>Evaluate(x));
             return range.Max();
 		}        
 
 
-		static public GameObject CreateBetweenPoints(this GameObject parent, Vector3 start, Vector3 end, float width)
+		static public GameObject CreateBetweenPoints(this GameObject parent, Vector3 start, Vector3 end, float width, bool useWorldSpace)
 		{
 
             // parent.AddComponent<MeshFilter>();
@@ -129,10 +129,14 @@ namespace MujocoUnity
             instance.transform.parent = parent.transform;			
 			instance.transform.up = offset;
 			instance.transform.localScale = scale;
-            instance.transform.localPosition = position;
+			if (useWorldSpace){
+				instance.transform.position = position;
+			} else {
+				instance.transform.localPosition = position;
+			}
 			return instance;
 		}
-		static public GameObject CreateAtPoint(this GameObject parent, Vector3 position, float width)
+		static public GameObject CreateAtPoint(this GameObject parent, Vector3 position, float width, bool useWorldSpace)
 		{
 			var scale = new Vector3(width, width, width);
 
@@ -149,7 +153,11 @@ namespace MujocoUnity
             var instance = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             instance.transform.parent = parent.transform;			
 			instance.transform.localScale = scale*2;
-            instance.transform.localPosition = position;
+			if (useWorldSpace){
+				instance.transform.position = position;
+			} else {
+				instance.transform.localPosition = position;
+			}
 			return instance;
 		}
         
