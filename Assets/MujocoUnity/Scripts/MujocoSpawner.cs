@@ -191,7 +191,10 @@ namespace MujocoUnity
 			switch (type)
 			{
 				case "capsule":
-					size = float.Parse(element.Attribute("size")?.Value);
+                    if (element.Attribute("size")?.Value?.Split()?.Length > 1)
+                        size = float.Parse(element.Attribute("size")?.Value.Split()[0]);
+                    else
+    					size = float.Parse(element.Attribute("size")?.Value);
 					var fromto = element.Attribute("fromto").Value;
 					print($"ParseGeom: Creating type:{type} fromto:{fromto} size:{size}");
 					geom = parent.CreateBetweenPoints(MujocoHelper.ParseFrom(fromto), MujocoHelper.ParseTo(fromto), size, _useWorldSpace);
