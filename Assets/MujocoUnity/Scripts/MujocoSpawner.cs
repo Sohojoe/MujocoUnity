@@ -15,6 +15,7 @@ namespace MujocoUnity
         public PhysicMaterial PhysicMaterial;
 		
 		XElement _root;
+        float _damping = 1;
 
         bool _hasParsed;
         bool _useWorldSpace;
@@ -124,13 +125,18 @@ namespace MujocoUnity
         {
             var joints = new List<KeyValuePair<string, Joint>>();
             List<KeyValuePair<string, Joint>> newJoints = null;
-            var geom = ParseGeom(xdoc, parentBody);
-            if (xdoc.Element("joint") != null && parentGeom != null && geom != null) {
-                newJoints = ParseJoint(xdoc, parentGeom, geom);
+            GameObject geom = null;
+            foreach (var element in xdoc.Elements("geom"))
+            {
+                geom = ParseGeom(element, parentBody);
+                if (element.Element("joint") != null && parentGeom != null && geom != null) {
+                    newJoints = ParseJoint(element, parentGeom, geom);
             }
             else if (parentXdoc?.Element("joint") != null && parentGeom != null && geom != null) 
                 newJoints = ParseJoint(parentXdoc, parentGeom, geom);
             if (newJoints != null) joints.AddRange(newJoints);
+            }
+            
 
             var name = "body";
             var elements = xdoc.Elements(name);
@@ -167,12 +173,11 @@ namespace MujocoUnity
             }
             return joints;
         }
-		GameObject ParseGeom(XElement xdoc, GameObject parent)
+		GameObject ParseGeom(XElement element, GameObject parent)
         {
             var name = "geom";
 			GameObject geom = null;
             
-            var element = xdoc.Element(name);
             if (element == null)
                 return null;
 
@@ -322,6 +327,11 @@ namespace MujocoUnity
 			}
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
+            if (hingeJoint != null){
+                var sp = hingeJoint.spring;
+                sp.damper = _damping;
+                hingeJoint.spring = sp;                
+            }
 			
             foreach (var attribute in element.Attributes())
             {
