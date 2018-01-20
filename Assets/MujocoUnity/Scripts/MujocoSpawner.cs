@@ -108,6 +108,9 @@ namespace MujocoUnity
                 {
                     item.constraints = item.constraints | RigidbodyConstraints.FreezeRotationY;
                 }
+            // 
+            foreach (var item in GetComponentsInChildren<Joint>())
+                item.enablePreprocessing = false;
 
         }
 
