@@ -15,6 +15,7 @@ namespace MujocoUnity
         public PhysicMaterial PhysicMaterial;
         public LayerMask CollisionLayer; // used to disable colliding with self
         public bool DebugOutput;
+        public string[] ListOf2dScripts = new string[] {"half_cheetah", "hopper", "walker2d"};
 		
 		XElement _root;
         float _damping = 1;
@@ -96,13 +97,18 @@ namespace MujocoUnity
                     item.material = PhysicMaterial;
                 }
             var layer = (int) Mathf.Log(CollisionLayer.value, 2);
-            print (layer);
             if (CollisionLayer != null)
                 foreach (var item in GetComponentsInChildren<Transform>())
                 {
                     item.gameObject.layer = layer;
                 }
             // 
+            if (ListOf2dScripts.FirstOrDefault(x=>x == this.name) != null)
+                foreach (var item in GetComponentsInChildren<Rigidbody>())
+                {
+                    item.constraints = item.constraints | RigidbodyConstraints.FreezeRotationY;
+                }
+
         }
 
         void ParseCompilerOptions(XElement xdoc)
@@ -339,6 +345,7 @@ namespace MujocoUnity
 					//joint.name = jointName;
                     joint.connectedBody = childGeom.GetComponent<Rigidbody>();
 					break;
+				case "slide":
 				case "free":
 					DebugPrint($"ParseJoint: Creating type:{type} ");
 					parentGeom.gameObject.AddComponent<FixedJoint> ();
