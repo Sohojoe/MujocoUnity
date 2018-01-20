@@ -121,20 +121,26 @@ namespace MujocoUnity
             }
         }
 
-		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject parentGeom, XElement parentXdoc = null)
+		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, List<GameObject> parentGeoms, XElement parentXdoc = null)
         {
             var joints = new List<KeyValuePair<string, Joint>>();
             List<KeyValuePair<string, Joint>> newJoints = null;
             GameObject geom = null;
+            List<GameObject> geoms = new List<GameObject>();
             foreach (var element in xdoc.Elements("geom"))
             {
+                newJoints = new List<KeyValuePair<string, Joint>>();
                 geom = ParseGeom(element, parentBody);
-                if (element.Element("joint") != null && parentGeom != null && geom != null) {
-                    newJoints = ParseJoint(element, parentGeom, geom);
-            }
-            else if (parentXdoc?.Element("joint") != null && parentGeom != null && geom != null) 
-                newJoints = ParseJoint(parentXdoc, parentGeom, geom);
-            if (newJoints != null) joints.AddRange(newJoints);
+                if (geom != null)
+                    geoms.Add(geom);
+                if (xdoc.Element("joint") != null && parentGeoms != null && parentGeoms.Count > 0 && geom != null) {
+                    foreach (var parentGeom in parentGeoms)
+                        newJoints.AddRange(ParseJoint(xdoc, parentGeom, geom));
+                }
+            else if (parentXdoc?.Element("joint") != null && parentGeoms != null && parentGeoms.Count > 0 && geom != null)
+                foreach (var parentGeom in parentGeoms) 
+                    newJoints.AddRange(ParseJoint(parentXdoc, parentGeom, geom));
+            if (newJoints.Count > 0) joints.AddRange(newJoints);
             }
             
 
@@ -168,7 +174,8 @@ namespace MujocoUnity
                             break;
                     }
                 }
-				newJoints = ParseBody(element, element.Attribute("name")?.Value, body, geom ?? parentGeom, xdoc);
+                var nextParentGeoms = geom != null ? new List<GameObject>{geom} : parentGeoms;
+				newJoints = ParseBody(element, element.Attribute("name")?.Value, body, nextParentGeoms, xdoc);
                 if (newJoints != null) joints.AddRange(newJoints);
             }
             return joints;
