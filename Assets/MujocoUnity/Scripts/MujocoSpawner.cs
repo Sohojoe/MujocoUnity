@@ -13,6 +13,8 @@ namespace MujocoUnity
 		public TextAsset MujocoXml;
         public Material Material;
         public PhysicMaterial PhysicMaterial;
+        public LayerMask CollisionLayer; // used to disable colliding with self
+        public bool DebugOutput;
 		
 		XElement _root;
         float _damping = 1;
@@ -45,11 +47,17 @@ namespace MujocoUnity
             _root = XElement.Parse(str);
         }
 
+        void DebugPrint(string str)
+        {
+            if (DebugOutput)
+                print(str);
+        }
+
 		void Parse()
         {
 			XElement element = _root;
             var name = element.Name.LocalName;
-            print($"- Begin");
+            DebugPrint($"- Begin");
 
             ParseCompilerOptions(_root);
 
@@ -58,7 +66,7 @@ namespace MujocoUnity
                 switch (attribute.Name.LocalName)
                 {
                     case "model":
-                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
 						this.gameObject.name = attribute.Value;
                         break;
                     default:
@@ -87,6 +95,13 @@ namespace MujocoUnity
                 {
                     item.material = PhysicMaterial;
                 }
+            var layer = (int) Mathf.Log(CollisionLayer.value, 2);
+            print (layer);
+            if (CollisionLayer != null)
+                foreach (var item in GetComponentsInChildren<Transform>())
+                {
+                    item.gameObject.layer = layer;
+                }
             // 
         }
 
@@ -100,20 +115,20 @@ namespace MujocoUnity
                     switch (attribute.Name.LocalName)
                     {
                         case "angle":
-                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             break;
                         case "coordinate":
-                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             if (attribute.Value.ToLower() == "global")
                                 _useWorldSpace = true;
                             else if (attribute.Value.ToLower() == "local")
                                 _useWorldSpace = false;
                             break;
                         case "inertiafromgeom":
-                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             break;
                         default:
-                            Console.WriteLine($"*** MISSING --> {name}.{attribute.Name.LocalName}");
+                            DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
                             throw new NotImplementedException(attribute.Name.LocalName);
                             break;
                     }
@@ -155,21 +170,21 @@ namespace MujocoUnity
                     switch (attribute.Name.LocalName)
                     {
                         case "name":
-                            //print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
 							body.name = attribute.Value;
                             break;
                         case "pos":
-                            // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             if (_useWorldSpace)
     							body.transform.position = MujocoHelper.ParseVector3(attribute.Value);
                             else
     							body.transform.localPosition = MujocoHelper.ParseVector3(attribute.Value);
                             break;
                         case "quat":
-                            print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             break;
                         default:
-                            Console.WriteLine($"*** MISSING --> {name}.{attribute.Name.LocalName}");
+                            DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
                             throw new NotImplementedException(attribute.Name.LocalName);
                             break;
                     }
@@ -190,7 +205,7 @@ namespace MujocoUnity
 
 			var type = element.Attribute("type")?.Value;
 			if (type == null) {
-				print($"--- WARNING: ParseGeom: no type found in geom. Ignoring ({element.ToString()}");
+				DebugPrint($"--- WARNING: ParseGeom: no type found in geom. Ignoring ({element.ToString()}");
 				return geom;
 			}
 			float size;
@@ -203,19 +218,19 @@ namespace MujocoUnity
                     else
     					size = float.Parse(element.Attribute("size")?.Value);
 					var fromto = element.Attribute("fromto").Value;
-					print($"ParseGeom: Creating type:{type} fromto:{fromto} size:{size}");
+					DebugPrint($"ParseGeom: Creating type:{type} fromto:{fromto} size:{size}");
 					geom = parent.CreateBetweenPoints(MujocoHelper.ParseFrom(fromto), MujocoHelper.ParseTo(fromto), size, _useWorldSpace);
 					geom.name = geomName;
 					break;
 				case "sphere":
 					size = float.Parse(element.Attribute("size")?.Value);
 					var pos = element.Attribute("pos").Value;
-					print($"ParseGeom: Creating type:{type} pos:{pos} size:{size}");
+					DebugPrint($"ParseGeom: Creating type:{type} pos:{pos} size:{size}");
 					geom = parent.CreateAtPoint(MujocoHelper.ParseVector3(pos), size, _useWorldSpace);
 					geom.name = geomName;
 					break;
 				default:
-					print($"--- WARNING: ParseGeom: {type} geom is not implemented. Ignoring ({element.ToString()}");
+					DebugPrint($"--- WARNING: ParseGeom: {type} geom is not implemented. Ignoring ({element.ToString()}");
 					return geom;
 			}
 			geom.AddRigidBody();
@@ -230,61 +245,61 @@ namespace MujocoUnity
                 switch (attribute.Name.LocalName)
                 {
                     case "contype":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "friction":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "rgba":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "name":
-                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "pos":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "quat":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "size":
-                        //print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "type":
-                        //print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "fromto":
-                        //print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "conaffinity":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "condim":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "density":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "material":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "solimp":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "solref":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "axisangle":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "user":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "margin":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     default: {
-                        Console.WriteLine($"*** MISSING --> {name}.{attribute.Name.LocalName}");
+                        DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
                         throw new NotImplementedException(attribute.Name.LocalName);
                         break;
                     }
@@ -310,7 +325,7 @@ namespace MujocoUnity
 
 			var type = element.Attribute("type")?.Value;
 			if (type == null) {
-				print($"--- WARNING: ParseJoint: no type found. Ignoring ({element.ToString()}");
+				DebugPrint($"--- WARNING: ParseJoint: no type found. Ignoring ({element.ToString()}");
 				return joints;
 			}
             Joint joint = null;
@@ -318,21 +333,21 @@ namespace MujocoUnity
 			switch (type)
 			{
 				case "hinge":
-					print($"ParseJoint: Creating type:{type} ");
+					DebugPrint($"ParseJoint: Creating type:{type} ");
 					parentGeom.gameObject.AddComponent<HingeJoint> ();
 					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
 					//joint.name = jointName;
                     joint.connectedBody = childGeom.GetComponent<Rigidbody>();
 					break;
 				case "free":
-					print($"ParseJoint: Creating type:{type} ");
+					DebugPrint($"ParseJoint: Creating type:{type} ");
 					parentGeom.gameObject.AddComponent<FixedJoint> ();
 					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
 					//joint.name = jointName;
                     joint.connectedBody = childGeom.GetComponent<Rigidbody>();
 					break;
 				default:
-					print($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
+					DebugPrint($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
 					return joints;
 			}
 			HingeJoint hingeJoint = joint as HingeJoint;
@@ -348,31 +363,31 @@ namespace MujocoUnity
                 switch (attribute.Name.LocalName)
                 {
                     case "armature":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "damping":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "limited":
-                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
 						if (hingeJoint != null) hingeJoint.useLimits = bool.Parse(attribute.Value);
                         break;
         			// <joint axis="1 0 0" limited="true" name="slider" pos="0 0 0" range="-1 1" type="slide"/>
                     case "axis":
-                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
 						joint.axis = MujocoHelper.ParseVector3(attribute.Value);
 						// joint.axis = MujocoHelper.ParseVector3NoFlipYZ(attribute.Value);
                         break;
                     case "name":
-                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "pos":
-                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
 						//joint.transform.localPosition += MujocoHelper.ParseVector3(attribute.Value);
 						// joint.anchor = MujocoHelper.ParseVector3NoFlipYZ(attribute.Value);
                         break;
                     case "range":
-                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
 						var limits = hingeJoint.limits;
 						limits.min = MujocoHelper.ParseGetMin(attribute.Value);
 						limits.max = MujocoHelper.ParseGetMax(attribute.Value);
@@ -380,22 +395,22 @@ namespace MujocoUnity
 						hingeJoint.useLimits = true;
                         break;
                     case "type":
-                        // print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "solimplimit":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "solreflimit":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "stiffness":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "margin":
-                        print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     default: 
-                        Console.WriteLine($"*** MISSING --> {name}.{attribute.Name.LocalName}");                    
+                        DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");                    
                         throw new NotImplementedException(attribute.Name.LocalName);
                         break;
                 }
@@ -424,12 +439,12 @@ namespace MujocoUnity
 
 			string jointName = element.Attribute("joint")?.Value;
 			if (jointName == null) {
-				print($"--- WARNING: ParseGears: no jointName found. Ignoring ({element.ToString()}");
+				DebugPrint($"--- WARNING: ParseGears: no jointName found. Ignoring ({element.ToString()}");
 				return mujocoJoints;
 			}
             var matches = joints.Where(x=>x.Key == jointName)?.Select(x=>x.Value);
             if(matches == null){
-				print($"--- ERROR: ParseGears: joint:'{jointName}' was not found in joints. Ignoring ({element.ToString()}");
+				DebugPrint($"--- ERROR: ParseGears: joint:'{jointName}' was not found in joints. Ignoring ({element.ToString()}");
 				return mujocoJoints;                
             }
 
@@ -464,14 +479,14 @@ namespace MujocoUnity
                             mujocoJoint.Gear = gear;
                             if (hingeJoint != null)
                                 spring.spring = gear;
-                            //print($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             break;
                         case "name":
                             var objName = attribute.Value;
                             mujocoJoint.Name = objName;
                             break;
                         default: 
-                            Console.WriteLine($"*** MISSING --> {name}.{attribute.Name.LocalName}");                    
+                            DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");                    
                             throw new NotImplementedException(attribute.Name.LocalName);
                             break;
                     }
