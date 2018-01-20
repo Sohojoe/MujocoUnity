@@ -189,6 +189,12 @@ namespace MujocoUnity
                         case "quat":
                             DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             break;
+                        case "childclass":
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        case "euler":
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
                         default:
                             DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
                             throw new NotImplementedException(attribute.Name.LocalName);
@@ -345,7 +351,6 @@ namespace MujocoUnity
 					//joint.name = jointName;
                     joint.connectedBody = childGeom.GetComponent<Rigidbody>();
 					break;
-				case "slide":
 				case "free":
 					DebugPrint($"ParseJoint: Creating type:{type} ");
 					parentGeom.gameObject.AddComponent<FixedJoint> ();
