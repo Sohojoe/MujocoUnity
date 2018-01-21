@@ -51,6 +51,17 @@ namespace MujocoUnity
 			return vec3;
 		}
 
+		static public Quaternion ParseQuaternion(string str)
+		{
+			string[] words = str.Split(_delimiterChars);
+			float w = Evaluate(words[0]);
+			float x = Evaluate(words[1]);
+			float y = Evaluate(words[2]);
+			float z = Evaluate(words[3]);
+			var q = MujocoFlipYZ ? new Quaternion(x,z,y,w) : new Quaternion(x,y,z,w);
+			return q;
+		}		
+
 		static public Vector3 ParseVector3(string str)
 		{
 			string[] words = str.Split(_delimiterChars);

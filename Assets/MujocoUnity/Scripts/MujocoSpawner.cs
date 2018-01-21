@@ -198,7 +198,7 @@ namespace MujocoUnity
     							body.transform.localPosition = MujocoHelper.ParseVector3(attribute.Value);
                             break;
                         case "quat":
-                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
                             break;
                         case "childclass":
                             DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
@@ -450,7 +450,7 @@ namespace MujocoUnity
                         // If the quaternion is known, this is the preferred was to specify the frame orientation because it does
                         // not involve conversions. Instead it is normalized to unit length and copied into mjModel during compilation.
                         // When a model is saved as MJCF, all frame orientations are expressed as quaternions using this attribute.
-                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        geom.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
                         break;
                     case "axisangle": // optional
                         // These are the quantities (x, y, z, a) mentioned above. The last number is the angle of rotation,
