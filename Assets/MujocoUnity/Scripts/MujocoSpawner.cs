@@ -16,9 +16,13 @@ namespace MujocoUnity
         public LayerMask CollisionLayer; // used to disable colliding with self
         public bool DebugOutput;
         public string[] ListOf2dScripts = new string[] {"half_cheetah", "hopper", "walker2d"};
+
+        public float GlobalDamping = 0;
 		
 		XElement _root;
-        float _damping = 1;
+		XElement _defaultJoint;
+		XElement _defaultGeom;
+		XElement _defaultMotor;
 
         bool _hasParsed;
         bool _useWorldSpace;
@@ -61,6 +65,10 @@ namespace MujocoUnity
             DebugPrint($"- Begin");
 
             ParseCompilerOptions(_root);
+
+            _defaultJoint = _root.Element("default")?.Element("joint");
+            _defaultGeom = _root.Element("default")?.Element("geom");
+            _defaultMotor = _root.Element("default")?.Element("motor");
 
             foreach (var attribute in element.Attributes())
             {
@@ -224,7 +232,6 @@ namespace MujocoUnity
 				return geom;
 			}
 			float size;
-			string geomName = element.Attribute("name")?.Value;
 			switch (type)
 			{
 				case "capsule":
@@ -235,82 +242,250 @@ namespace MujocoUnity
 					var fromto = element.Attribute("fromto").Value;
 					DebugPrint($"ParseGeom: Creating type:{type} fromto:{fromto} size:{size}");
 					geom = parent.CreateBetweenPoints(MujocoHelper.ParseFrom(fromto), MujocoHelper.ParseTo(fromto), size, _useWorldSpace);
-					geom.name = geomName;
 					break;
 				case "sphere":
 					size = float.Parse(element.Attribute("size")?.Value);
 					var pos = element.Attribute("pos").Value;
 					DebugPrint($"ParseGeom: Creating type:{type} pos:{pos} size:{size}");
 					geom = parent.CreateAtPoint(MujocoHelper.ParseVector3(pos), size, _useWorldSpace);
-					geom.name = geomName;
 					break;
 				default:
 					DebugPrint($"--- WARNING: ParseGeom: {type} geom is not implemented. Ignoring ({element.ToString()}");
 					return geom;
 			}
 			geom.AddRigidBody();
-			//geom.transform.parent = parent.transform;			
-			// TODO set collision based on size and fromto
 
-
-            foreach (var attribute in element.Attributes())
+            if (_defaultGeom != null)
+                ApplyClassToGeom(_defaultGeom, geom);
+            ApplyClassToGeom(element, geom);
+            
+			return geom;
+        }
+        void ApplyClassToGeom(XElement classElement, GameObject geom)
+        {
+            foreach (var attribute in classElement.Attributes())
             {
                 // <geom name="rail" pos="0 0 0" quat="0.707 0 0.707 0"  size="0.02 1" type="capsule"/>
 				// <geom fromto="0 0 0 0.001 0 0.6" name="cpole" rgba="0 0.7 0.7 1" size="0.049 0.3" type="capsule"/>
                 switch (attribute.Name.LocalName)
                 {
-                    case "contype":
+                    case "name": // optional
+                        // Name of the geom.
+    					geom.name = attribute.Value;
+                        break;
+                    case "class": // optional
+                        // Defaults class for setting unspecified attributes.
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
-                    case "friction":
+                    case "type": // [plane, hfield, sphere, capsule, ellipsoid, cylinder, box, mesh], "sphere"
+                        // Type of geometric shape.
+                        // Handled in object init
+                        break;
+                    case "contype": // int, "1"
+                        // This attribute and the next specify 32-bit integer bitmasks used for contact 
+                        // filtering of dynamically generated contact pairs. See Collision detection in 
+                        // the Computation chapter. Two geoms can collide if the contype of one geom is 
+                        // compatible with the conaffinity of the other geom or vice versa. 
+                        // Compatible means that the two bitmasks have a common bit set to 1.
+                        // Note: contype="0" conaffinity="0" disables physics contacts
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
-                    case "rgba":
+                    case "conaffinity": // int, "1"
+                        // Bitmask for contact filtering; see contype above.
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
-                    case "name":
-                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                        break;
-                    case "pos":
+                    case "condim": //  int, "3"
+                        // The dimensionality of the contact space for a dynamically generated contact 
+                        // pair is set to the maximum of the condim values of the two participating geoms. 
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
-                    case "quat":
+                    case "group": // int, "0"
+                        // This attribute specifies an integer group to which the geom belongs.
+                        // The only effect on the physics is at compile time, when body masses and inertias are
+                        // inferred from geoms selected based on their group; see inertiagrouprange attribute of compiler.
+                        // At runtime this attribute is used by the visualizer to enable and disable the rendering of
+                        // entire geom groups. It can also be used as a tag for custom computations.
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
-                    case "size":
-                        //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                    case "size": // real(3), "0 0 0"
+                        // Geom size parameters. The number of required parameters and their meaning depends on the
+                        // geom type as documented under the type attribute. Here we only provide a summary.
+                        // All required size parameters must be positive; the internal defaults correspond to invalid
+                        // settings. Note that when a non-mesh geom type references a mesh, a geometric primitive of
+                        // that type is fitted to the mesh. In that case the sizes are obtained from the mesh, and
+                        // the geom size parameters are ignored. Thus the number and description of required size
+                        // parameters in the table below only apply to geoms that do not reference meshes. 
+                        // Type	Number	Description
+                        // plane	3	X half-size; Y half-size; spacing between square grid lines for rendering.
+                        // hfield	0	The geom sizes are ignored and the height field sizes are used instead.
+                        // sphere	1	Radius of the sphere.
+                        // capsule	1 or 2	Radius of the capsule; half-length of the cylinder part when not using the fromto specification.
+                        // ellipsoid	3	X radius; Y radius; Z radius.
+                        // cylinder	1 or 2	Radius of the cylinder; half-length of the cylinder when not using the fromto specification.
+                        // box	3	X half-size; Y half-size; Z half-size.
+                        // mesh	0	The geom sizes are ignored and the mesh sizes are used instead.
+                        // Handled at object init
                         break;
-                    case "type":
-                        //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                        break;
-                    case "fromto":
-                        //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                        break;
-                    case "conaffinity":
+                    case "material": //  optional
+                        // If specified, this attribute applies a material to the geom. The material determines the visual properties of
+                        // the geom. The only exception is color: if the rgba attribute below is different from its internal default, it takes
+                        // precedence while the remaining material properties are still applied. Note that if the same material is referenced
+                        // from multiple geoms (as well as sites and tendons) and the user changes some of its properties at runtime,
+                        // these changes will take effect immediately for all model elements referencing the material. This is because the
+                        // compiler saves the material and its properties as a separate element in mjModel, and the elements using this
+                        // material only keep a reference to it.
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
-                    case "condim":
+                    case "rgba": // real(4), "0.5 0.5 0.5 1"
+                        // Instead of creating material assets and referencing them, this attribute can be used
+                        // to set color and transparency only. This is not as flexible as the material mechanism,
+                        // but is more convenient and is often sufficient. If the value of this attribute is
+                        // different from the internal default, it takes precedence over the material.
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
-                    case "density":
+                    case "friction": //real(3), "1 0.005 0.0001"
+                        // Contact friction parameters for dynamically generated contact pairs. 
+                        // The first number is the sliding friction, acting along both axes of the tangent plane. 
+                        // The second number is the torsional friction, acting around the contact normal.
+                        // The third number is the rolling friction, acting around both axes of the tangent plane.
+                        // The friction parameters for the contact pair are computed as the element-wise maximum of 
+                        // the geom-specific parameters. See also Parameters section in the Computation chapter.
+                        float? slidingFriction = null;
+                        float? torsionalFriction = null;
+                        float? rollingFriction = null;
+                        var frictionSplit = attribute.Value.Split(' ');
+                        if (frictionSplit?.Length >= 3)
+                            rollingFriction = float.Parse(frictionSplit[2]);
+                        if (frictionSplit?.Length >= 2)
+                            torsionalFriction = float.Parse(frictionSplit[1]);                            
+                        if (frictionSplit?.Length >= 1)
+                            slidingFriction = float.Parse(frictionSplit[0]);
+                        var physicMaterial = geom.GetComponent<Collider>()?.material;
+                        physicMaterial.staticFriction = slidingFriction.Value;
+                        if (rollingFriction.HasValue)
+                            physicMaterial.dynamicFriction = rollingFriction.Value;
+                        else if (torsionalFriction.HasValue)
+                            physicMaterial.dynamicFriction = torsionalFriction.Value;
+                        else 
+                            physicMaterial.dynamicFriction = slidingFriction.Value;
+                        break;
+                    case "mass": // optional
+                        // If this attribute is specified, the density attribute below is ignored and the geom density
+                        // is computed from the given mass, using the geom shape and the assumption of uniform density. 
+                        // The computed density is then used to obtain the geom inertia. Recall that the geom mass and
+                        // inerta are only used during compilation, to infer the body mass and inertia if necessary.
+                        // At runtime only the body inertial properties affect the simulation;
+                        // the geom mass and inertia are not even saved in mjModel.
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
-                    case "material":
-                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                    case "density": //  "1000"
+                        // Material density used to compute the geom mass and inertia. The computation is based on the
+                        // geom shape and the assumption of uniform density. The internal default of 1000 is the density
+                        // of water in SI units. This attribute is used only when the mass attribute above is unspecified.
+                        var density = float.Parse(attribute.Value) / 1000f;
+                        geom.GetComponent<Rigidbody>().mass = density;
                         break;
-                    case "solimp":
+                    case "solmix": // "1"
+                        // This attribute specifies the weight used for averaging of constraint solver parameters.
+                        // Recall that the solver parameters for a dynamically generated geom pair are obtained as a 
+                        // weighted average of the geom-specific parameters.
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "solref":
+                        // Constraint solver parameters for contact simulation. See Solver parameters.
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
-                    case "axisangle":
+                    case "solimp":
+                        // Constraint solver parameters for contact simulation. See Solver parameters.
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "margin": //  "0"
+                        // Distance threshold below which contacts are detected and included in the global array mjData.contact.
+                        // This however does not mean that contact force will be generated. A contact is considered active only
+                        // if the distance between the two geom surfaces is below margin-gap. Recall that constraint impedance
+                        // can be a function of distance, as explained in Solver parameters. The quantity this function is
+                        // applied to is the distance between the two geoms minus the margin plus the gap.
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "gap": // "0"
+                        // This attribute is used to enable the generation of inactive contacts, i.e. contacts that are ignored
+                        //by the constraint solver but are included in mjData.contact for the purpose of custom computations.
+                        // When this value is positive, geom distances between margin and margin-gap correspond to such
+                        // inactive contacts.
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "fromto": // optional
+                        // This attribute can only be used with capsule and cylinder geoms. It provides an alternative specification
+                        //  of the geom length as well as the frame position and orientation. The six numbers are the 3D coordinates
+                        // of one point followed by the 3D coordinates of another point. The cylinder geom (or cylinder part of the
+                        // capsule geom) connects these two points, with the +Z axis of the geom's frame oriented from the first
+                        // towards the second point. The frame orientation is obtained with the same procedure as the zaxis
+                        // attribute described in Frame orientations. The frame position is in the middle between the two points.
+                        // If this attribute is specified, the remaining position and orientation-related attributes are ignored.
+                        // Handled at object init
+                        break;
+                    case "pos": // "0 0 0"
+                        // Position of the geom frame, in local or global coordinates as determined by the coordinate
+                        // attribute of compiler.
+                        // Handled at object init
+                        break;
+                    case "hfield": // optional
+                        // This attribute must be specified if and only if the geom type is "hfield".
+                        // It references the height field asset to be instantiated at the position and orientation of the geom frame.
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "mesh" : // optional
+                        // If the geom type is "mesh", this attribute is required. It references the mesh asset to be instantiated.
+                        // This attribute can also be specified if the geom type corresponds to a geometric primitive, namely one
+                        // of "sphere", "capsule", "cylinder", "ellipsoid", "box". In that case the primitive is automatically
+                        // fitted to the mesh asset referenced here. The fitting procedure uses either the equivalent
+                        // inertia box or the axis-aligned bounding box of the mesh, as determined by the attribute fitaabb
+                        // of compiler. The resulting size of the fitted geom is usually what one would expect, but if not,
+                        // it can be further adjusted with the fitscale attribute below. In the compiled mjModel the geom is
+                        // represented as a regular geom of the specified primitive type, and there is no reference to the mesh
+                        // used for fitting.                        
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "quat": // "1 0 0 0"
+                        // If the quaternion is known, this is the preferred was to specify the frame orientation because it does
+                        // not involve conversions. Instead it is normalized to unit length and copied into mjModel during compilation.
+                        // When a model is saved as MJCF, all frame orientations are expressed as quaternions using this attribute.
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "axisangle": // optional
+                        // These are the quantities (x, y, z, a) mentioned above. The last number is the angle of rotation,
+                        // in degrees or radians as specified by the angle attribute of compiler. The first three numbers determine
+                        // a 3D vector which is the rotation axis. This vector is normalized to unit length during compilation,
+                        // so the user can specify a vector of any non-zero length. Keep in mind that the rotation is right-handed;
+                        // if the direction of the vector (x, y, z) is reversed this will result in the opposite rotation.
+                        // Changing the sign of a can also be used to specify the opposite rotation.
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "xyaxes": //  optional
+                        // The first 3 numbers are the X axis of the frame. The next 3 numbers are the Y axis of the frame,
+                        // which is automatically made orthogonal to the X axis. The Z axis is then defined as the
+                        // cross-product of the X and Y axes.
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "zaxis": //  optional
+                        // The Z axis of the frame. The compiler finds the minimal rotation that maps the vector (0,0,1)
+                        // into the vector specified here. This determines the X and Y axes of the frame implicitly.
+                        // This is useful for geoms with rotational symmetry around the Z axis, as well as lights - which
+                        // are oriented along the Z axis of their frame.
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "euler": // optional
+                        // Rotation angles around three coordinate axes. The sequence of axes around which these rotations are applied
+                        // is determined by the eulerseq attribute of compiler and is the same for the entire model.
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "fitscale": // "1"
+                        // This attribute is used only when a primitive geometric type is being fitted to a mesh asset.
+                        // The scale specified here is relative to the output of the automated fitting procedure. The default value 
+                        // of 1 leaves the result unchanged, a value of 2 makes all sizes of the fitted geom two times larger.
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "user":
-                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                        break;
-                    case "margin":
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     default: {
@@ -320,7 +495,6 @@ namespace MujocoUnity
                     }
                 }
             }
-			return geom;
         }
 		Joint FixedJoint(GameObject parent)
 		{
@@ -353,6 +527,7 @@ namespace MujocoUnity
 					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
 					//joint.name = jointName;
                     joint.connectedBody = childGeom.GetComponent<Rigidbody>();
+                    ApplyClassToJoint(_defaultJoint, joint);
 					break;
 				case "free":
 					DebugPrint($"ParseJoint: Creating type:{type} ");
@@ -360,20 +535,34 @@ namespace MujocoUnity
 					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
 					//joint.name = jointName;
                     joint.connectedBody = childGeom.GetComponent<Rigidbody>();
+                    ApplyClassToJoint(_defaultJoint, joint);
 					break;
 				default:
 					DebugPrint($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
 					return joints;
 			}
+			// HingeJoint hingeJoint = joint as HingeJoint;
+            // FixedJoint fixedJoint = joint as FixedJoint;
+            // if (hingeJoint != null){
+            //     var sp = hingeJoint.spring;
+            //     sp.damper = _damping;
+            //     hingeJoint.spring = sp;                
+            // }
+			
+            ApplyClassToJoint(element, joint);
+            
+            if (joint != null)
+                joints.Add(new KeyValuePair<string,Joint>(jointName, joint));	
+			return joints;
+		}
+
+        void ApplyClassToJoint(XElement classElement, Joint joint)
+        {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
-            if (hingeJoint != null){
-                var sp = hingeJoint.spring;
-                sp.damper = _damping;
-                hingeJoint.spring = sp;                
-            }
-			
-            foreach (var attribute in element.Attributes())
+            JointSpring spring = hingeJoint?.spring ?? new JointSpring();
+            JointLimits limits = hingeJoint?.limits ?? new JointLimits();
+            foreach (var attribute in classElement.Attributes())
             {
                 switch (attribute.Name.LocalName)
                 {
@@ -381,36 +570,28 @@ namespace MujocoUnity
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "damping":
-                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        spring.damper = GlobalDamping + float.Parse(attribute.Value);
                         break;
                     case "limited":
-                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-						if (hingeJoint != null) hingeJoint.useLimits = bool.Parse(attribute.Value);
+						if (hingeJoint != null)
+                            hingeJoint.useLimits = bool.Parse(attribute.Value);
                         break;
-        			// <joint axis="1 0 0" limited="true" name="slider" pos="0 0 0" range="-1 1" type="slide"/>
                     case "axis":
-                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
 						joint.axis = MujocoHelper.ParseVector3(attribute.Value);
-						// joint.axis = MujocoHelper.ParseVector3NoFlipYZ(attribute.Value);
                         break;
                     case "name":
                         // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "pos":
-                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-						//joint.transform.localPosition += MujocoHelper.ParseVector3(attribute.Value);
-						// joint.anchor = MujocoHelper.ParseVector3NoFlipYZ(attribute.Value);
+                        // NOTE: handle in setup
                         break;
                     case "range":
-                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-						var limits = hingeJoint.limits;
 						limits.min = MujocoHelper.ParseGetMin(attribute.Value);
 						limits.max = MujocoHelper.ParseGetMax(attribute.Value);
-						hingeJoint.limits = limits;
 						hingeJoint.useLimits = true;
                         break;
                     case "type":
-                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // NOTE: handle in setup
                         break;
                     case "solimplimit":
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
@@ -430,10 +611,13 @@ namespace MujocoUnity
                         break;
                 }
             }
-            if (joint != null)
-                joints.Add(new KeyValuePair<string,Joint>(jointName, joint));	
-			return joints;
-		}		
+            if(hingeJoint != null) {
+                hingeJoint.spring = spring;                
+                hingeJoint.limits = limits;
+            }
+        }
+
+
 		List<MujocoJoint>  ParseGears(XElement xdoc, List<KeyValuePair<string, Joint>>  joints)
         {
             var mujocoJoints = new List<MujocoJoint>();
@@ -448,6 +632,9 @@ namespace MujocoUnity
             }
             return mujocoJoints;
         }
+
+
+
 		List<MujocoJoint> ParseGear(XElement element, List<KeyValuePair<string, Joint>>  joints)
         {
             var mujocoJoints = new List<MujocoJoint>();
@@ -475,43 +662,54 @@ namespace MujocoUnity
                     Joint = joint,
                     JointName = jointName,
                 };
-                foreach (var attribute in element.Attributes())
-                {
-                    switch (attribute.Name.LocalName)
-                    {
-                        case "joint":
-                            break;
-                        case "ctrllimited":
-                            var ctrlLimited = bool.Parse(attribute.Value);
-                            mujocoJoint.CtrlLimited = ctrlLimited;
-                            break;
-                        case "ctrlrange":
-                            var ctrlRange = MujocoHelper.ParseVector2(attribute.Value);
-                            mujocoJoint.CtrlRange = ctrlRange;
-                            break;
-                        case "gear":
-                            var gear = float.Parse(attribute.Value);
-                            mujocoJoint.Gear = gear;
-                            if (hingeJoint != null)
-                                spring.spring = gear;
-                            //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                            break;
-                        case "name":
-                            var objName = attribute.Value;
-                            mujocoJoint.Name = objName;
-                            break;
-                        default: 
-                            DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");                    
-                            throw new NotImplementedException(attribute.Name.LocalName);
-                            break;
-                    }
-                }
-                if (hingeJoint != null) {
-                    hingeJoint.spring = spring;
-                }
+                if(_defaultMotor != null)
+                    ApplyClassToGear(_defaultMotor, joint, mujocoJoint);
+                ApplyClassToGear(element, joint, mujocoJoint);
+
                 mujocoJoints.Add(mujocoJoint);
             }
             return mujocoJoints;
+        }
+
+        void ApplyClassToGear(XElement classElement, Joint joint, MujocoJoint mujocoJoint)
+        {
+			HingeJoint hingeJoint = joint as HingeJoint;
+            FixedJoint fixedJoint = joint as FixedJoint;
+            JointSpring spring = hingeJoint?.spring ?? new JointSpring();
+            JointLimits limits = hingeJoint?.limits ?? new JointLimits();
+            foreach (var attribute in classElement.Attributes())
+            {
+                switch (attribute.Name.LocalName)
+                {
+                    case "joint":
+                        break;
+                    case "ctrllimited":
+                        var ctrlLimited = bool.Parse(attribute.Value);
+                        mujocoJoint.CtrlLimited = ctrlLimited;
+                        break;
+                    case "ctrlrange":
+                        var ctrlRange = MujocoHelper.ParseVector2(attribute.Value);
+                        mujocoJoint.CtrlRange = ctrlRange;
+                        break;
+                    case "gear":
+                        var gear = float.Parse(attribute.Value);
+                        mujocoJoint.Gear = gear;
+                        spring.spring = gear;
+                        break;
+                    case "name":
+                        var objName = attribute.Value;
+                        mujocoJoint.Name = objName;
+                        break;
+                    default: 
+                        DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");                    
+                        throw new NotImplementedException(attribute.Name.LocalName);
+                        break;
+                }
+            }
+            if(hingeJoint != null) {
+                hingeJoint.spring = spring;                
+                hingeJoint.limits = limits;
+            }
         }
 	}
 }
