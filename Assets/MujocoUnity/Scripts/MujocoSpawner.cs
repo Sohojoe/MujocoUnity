@@ -16,6 +16,7 @@ namespace MujocoUnity
         public LayerMask CollisionLayer; // used to disable colliding with self
         public bool DebugOutput;
         public string[] ListOf2dScripts = new string[] {"half_cheetah", "hopper", "walker2d"};
+        public string[] HackFlipZList = new string[] {"humanoid", "humanoidstandup", "hopper", "walker2d"};
 
         public float GlobalDamping = 0;
 		
@@ -26,6 +27,9 @@ namespace MujocoUnity
 
         bool _hasParsed;
         bool _useWorldSpace;
+        bool _hackFlipZ;
+        Quaternion _orginalTransformRotation;
+        Vector3 _orginalTransformPosition;
         public void SpawnFromXml()
         {
             if (_hasParsed)
@@ -70,6 +74,8 @@ namespace MujocoUnity
             _defaultGeom = _root.Element("default")?.Element("geom");
             _defaultMotor = _root.Element("default")?.Element("motor");
 
+
+
             foreach (var attribute in element.Attributes())
             {
                 switch (attribute.Name.LocalName)
@@ -84,11 +90,24 @@ namespace MujocoUnity
                 // result = result.Append(ParseBody(element, element.Attribute("name")?.Value));
             }
 
+            // HACK - need to flip axisZ on some models (not sure why???)
+            _hackFlipZ = HackFlipZList.FirstOrDefault(x=>x == this.gameObject.name) != null;
+
+
             //ParseBody(element.Element("default"), "default", this.gameObject);
         	// <compiler inertiafromgeom="true"/>
         	// <option gravity="0 0 -9.81" integrator="RK4" timestep="0.02"/>
             // <size nstack="3000"/>
             // // worldbody
+
+            // when using world space, geoms will be created in global space
+            // so setting the parent object to 0,0,0 allows us to fix that
+            // _orginalTransform = Transform.Instantiate(transform);
+            _orginalTransformRotation = this.gameObject.transform.rotation;
+            _orginalTransformPosition = this.gameObject.transform.position;
+            this.gameObject.transform.rotation = new Quaternion();
+            this.gameObject.transform.position = new Vector3();
+
             var joints = ParseBody(element.Element("worldbody"), "worldbody", this.gameObject, null);
 	        // <actuator>		<motor gear="100" joint="slider" name="slide"/>
             var mujocoJoints = ParseGears(element.Element("actuator"), joints);
@@ -117,9 +136,14 @@ namespace MujocoUnity
                     item.constraints = item.constraints | RigidbodyConstraints.FreezeRotationY;
                 }
             // 
+
+
             foreach (var item in GetComponentsInChildren<Joint>())
                 item.enablePreprocessing = false;
 
+            // restore positions and orientation
+            this.gameObject.transform.rotation = _orginalTransformRotation;
+            this.gameObject.transform.position = _orginalTransformPosition;
         }
 
         void ParseCompilerOptions(XElement xdoc)
@@ -142,6 +166,9 @@ namespace MujocoUnity
                                 _useWorldSpace = false;
                             break;
                         case "inertiafromgeom":
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        case "settotalmass":
                             DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             break;
                         default:
@@ -169,10 +196,10 @@ namespace MujocoUnity
                     foreach (var parentGeom in parentGeoms)
                         newJoints.AddRange(ParseJoint(xdoc, parentGeom, geom));
                 }
-            else if (parentXdoc?.Element("joint") != null && parentGeoms != null && parentGeoms.Count > 0 && geom != null)
-                foreach (var parentGeom in parentGeoms) 
-                    newJoints.AddRange(ParseJoint(parentXdoc, parentGeom, geom));
-            if (newJoints.Count > 0) joints.AddRange(newJoints);
+                else if (parentXdoc?.Element("joint") != null && parentGeoms != null && parentGeoms.Count > 0 && geom != null)
+                    foreach (var parentGeom in parentGeoms) 
+                        newJoints.AddRange(ParseJoint(parentXdoc, parentGeom, geom));
+                if (newJoints.Count > 0) joints.AddRange(newJoints);
             }
             
 
@@ -181,6 +208,7 @@ namespace MujocoUnity
             foreach (var element in elements) {
 				var body = new GameObject();
 				body.transform.parent = parentBody.transform;
+				// body.transform.parent = geom?.transform ?? parentBody.transform;
                 
                 foreach (var attribute in element.Attributes())
                 {
@@ -193,12 +221,15 @@ namespace MujocoUnity
                         case "pos":
                             // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             if (_useWorldSpace)
-    							body.transform.position = MujocoHelper.ParseVector3(attribute.Value);
+    							body.transform.position = MujocoHelper.ParsePosition(attribute.Value);
                             else
-    							body.transform.localPosition = MujocoHelper.ParseVector3(attribute.Value);
+    							body.transform.localPosition = MujocoHelper.ParsePosition(attribute.Value);
                             break;
                         case "quat":
-                            body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                            if (_useWorldSpace)
+                                body.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                            else
+                               body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
                             break;
                         case "childclass":
                             DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
@@ -232,6 +263,15 @@ namespace MujocoUnity
 				return geom;
 			}
 			float size;
+            print($"ParseGeom: Creating type:{type} name:{element.Attribute("name")?.Value}");
+            if(element.Attribute("name")?.Value == "left_shin1"){
+                print("***---***");
+                print(element);
+            }
+            if(element.Attribute("name")?.Value == "right_foot_cap1"){
+                print("***---***");
+                print(element);
+            }
 			switch (type)
 			{
 				case "capsule":
@@ -247,7 +287,7 @@ namespace MujocoUnity
 					size = float.Parse(element.Attribute("size")?.Value);
 					var pos = element.Attribute("pos").Value;
 					DebugPrint($"ParseGeom: Creating type:{type} pos:{pos} size:{size}");
-					geom = parent.CreateAtPoint(MujocoHelper.ParseVector3(pos), size, _useWorldSpace);
+					geom = parent.CreateAtPoint(MujocoHelper.ParsePosition(pos), size, _useWorldSpace);
 					break;
 				default:
 					DebugPrint($"--- WARNING: ParseGeom: {type} geom is not implemented. Ignoring ({element.ToString()}");
@@ -450,7 +490,10 @@ namespace MujocoUnity
                         // If the quaternion is known, this is the preferred was to specify the frame orientation because it does
                         // not involve conversions. Instead it is normalized to unit length and copied into mjModel during compilation.
                         // When a model is saved as MJCF, all frame orientations are expressed as quaternions using this attribute.
-                        geom.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                        if (_useWorldSpace)
+                            geom.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                        else
+                            geom.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value);
                         break;
                     case "axisangle": // optional
                         // These are the quantities (x, y, z, a) mentioned above. The last number is the angle of rotation,
@@ -577,7 +620,7 @@ namespace MujocoUnity
                             hingeJoint.useLimits = bool.Parse(attribute.Value);
                         break;
                     case "axis":
-						joint.axis = MujocoHelper.ParseVector3(attribute.Value);
+						joint.axis = MujocoHelper.ParseAxis(attribute.Value, _hackFlipZ);
                         break;
                     case "name":
                         // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");

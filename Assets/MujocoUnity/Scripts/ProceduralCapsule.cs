@@ -24,11 +24,14 @@ public class ProceduralCapsule : MonoBehaviour
 	public float height = 2f;
 	public float radius = 0.5f;
 	
-	public int segments = 24;
+	public int segments = 48;
 	
 	
 	// void GenerateMesh() 
 	void Start ()
+	{
+	}
+	public void CreateMesh()
 	{
 		// make segments an even number
 		if ( segments % 2 != 0 )

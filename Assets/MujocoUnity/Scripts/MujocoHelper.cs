@@ -58,11 +58,27 @@ namespace MujocoUnity
 			float x = Evaluate(words[1]);
 			float y = Evaluate(words[2]);
 			float z = Evaluate(words[3]);
+			// var q = MujocoFlipYZ ? new Quaternion(0-x,z,y,w) : new Quaternion(x,y,z,w);
 			var q = MujocoFlipYZ ? new Quaternion(x,z,y,w) : new Quaternion(x,y,z,w);
 			return q;
 		}		
 
-		static public Vector3 ParseVector3(string str)
+		static public Vector3 ParseAxis(string str, bool hackFlipZ)
+		{
+			string[] words = str.Split(_delimiterChars);
+			float x = Evaluate(words[0]);
+			float y = Evaluate(words[1]);
+			float z = Evaluate(words[2]);
+			Vector3 vec3;
+            if (MujocoFlipYZ)
+    			vec3 = new Vector3(x,z,y);
+			else
+				vec3 = new Vector3(x,y,z);
+			if (hackFlipZ)
+				vec3.z = 0-vec3.z;
+			return vec3;
+		}
+		static public Vector3 ParsePosition(string str)
 		{
 			string[] words = str.Split(_delimiterChars);
 			float x = Evaluate(words[0]);
@@ -70,13 +86,14 @@ namespace MujocoUnity
 			float z = Evaluate(words[2]);
 			var vec3 = new Vector3(x,y,z);
             if (MujocoFlipYZ) {
+    			// vec3 = new Vector3(0-x,z,y);
     			vec3 = new Vector3(x,z,y);
             }
 			return vec3;
 		}
 		static public Vector3 ParseFrom(string fromTo)
 		{
-			return ParseVector3(fromTo);
+			return ParsePosition(fromTo);
 		}
 		static public Vector3 ParseTo(string fromTo)
 		{
@@ -86,6 +103,7 @@ namespace MujocoUnity
 			float z = Evaluate(words[5]);
 			var vec3 = new Vector3(x,y,z);
             if (MujocoFlipYZ) {
+    			// vec3 = new Vector3(0-x,z,y);
     			vec3 = new Vector3(x,z,y);
             }            
 			return vec3;
@@ -134,12 +152,24 @@ namespace MujocoUnity
 			// return parent;
 
 			var offset = end - start;
-			var scale = new Vector3(width*2, offset.magnitude / 2.0f, width*2);
+			//var scale = new Vector3(width*2, offset.magnitude / 2.0f, width*2);
 			var position = start + (offset / 2.0f);
-            var instance = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            instance.transform.parent = parent.transform;			
+            // var instance = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+			var instance = new GameObject();
+			instance.AddComponent<ProceduralCapsule>();
+			instance.AddComponent<CapsuleCollider>();
+			var height = Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.y), Mathf.Abs(offset.z));
+			var collider = instance.GetComponent<CapsuleCollider>();
+			var procCap = instance.GetComponent<ProceduralCapsule>();
+			collider.height = height+(width*2);
+			collider.radius = width;
+			procCap.height = height+(width*2);
+			procCap.radius = width;
+			procCap.CreateMesh();
+
+            instance.transform.parent = parent.transform;
 			instance.transform.up = offset;
-			instance.transform.localScale = scale;
+			//instance.transform.localScale = scale;
 			if (useWorldSpace){
 				instance.transform.position = position;
 			} else {
