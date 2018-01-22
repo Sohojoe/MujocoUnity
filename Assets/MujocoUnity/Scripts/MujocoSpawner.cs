@@ -74,8 +74,6 @@ namespace MujocoUnity
             _defaultGeom = _root.Element("default")?.Element("geom");
             _defaultMotor = _root.Element("default")?.Element("motor");
 
-
-
             foreach (var attribute in element.Attributes())
             {
                 switch (attribute.Name.LocalName)
@@ -185,21 +183,28 @@ namespace MujocoUnity
             var joints = new List<KeyValuePair<string, Joint>>();
             List<KeyValuePair<string, Joint>> newJoints = null;
             GameObject geom = null;
+            bool isFirstGeom = true;
             List<GameObject> geoms = new List<GameObject>();
             foreach (var element in xdoc.Elements("geom"))
             {
                 newJoints = new List<KeyValuePair<string, Joint>>();
+                var lastGeom = geom;
                 geom = ParseGeom(element, parentBody);
-                if (geom != null)
+                if (geom != null) {
+                    geom.transform.parent = lastGeom?.transform ?? parentBody.transform;
                     geoms.Add(geom);
-                if (xdoc.Element("joint") != null && parentGeoms != null && parentGeoms.Count > 0 && geom != null) {
-                    foreach (var parentGeom in parentGeoms)
-                        newJoints.AddRange(ParseJoint(xdoc, parentGeom, geom));
                 }
-                else if (parentXdoc?.Element("joint") != null && parentGeoms != null && parentGeoms.Count > 0 && geom != null)
-                    foreach (var parentGeom in parentGeoms) 
-                        newJoints.AddRange(ParseJoint(parentXdoc, parentGeom, geom));
+                if (isFirstGeom){
+                    if (xdoc.Element("joint") != null && parentGeoms != null && parentGeoms.Count > 0 && geom != null) {
+                        foreach (var parentGeom in parentGeoms)
+                            newJoints.AddRange(ParseJoint(xdoc, parentGeom, geom));
+                    }
+                    else if (parentXdoc?.Element("joint") != null && parentGeoms != null && parentGeoms.Count > 0 && geom != null)
+                        foreach (var parentGeom in parentGeoms) 
+                            newJoints.AddRange(ParseJoint(parentXdoc, parentGeom, geom));
+                }
                 if (newJoints.Count > 0) joints.AddRange(newJoints);
+                isFirstGeom = false;
             }
             
 
@@ -568,17 +573,13 @@ namespace MujocoUnity
 					DebugPrint($"ParseJoint: Creating type:{type} ");
 					parentGeom.gameObject.AddComponent<HingeJoint> ();
 					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
-					//joint.name = jointName;
                     joint.connectedBody = childGeom.GetComponent<Rigidbody>();
-                    ApplyClassToJoint(_defaultJoint, joint);
 					break;
 				case "free":
 					DebugPrint($"ParseJoint: Creating type:{type} ");
 					parentGeom.gameObject.AddComponent<FixedJoint> ();
 					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
-					//joint.name = jointName;
                     joint.connectedBody = childGeom.GetComponent<Rigidbody>();
-                    ApplyClassToJoint(_defaultJoint, joint);
 					break;
 				default:
 					DebugPrint($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
@@ -592,6 +593,8 @@ namespace MujocoUnity
             //     hingeJoint.spring = sp;                
             // }
 			
+            if(_defaultJoint != null)
+                ApplyClassToJoint(_defaultJoint, joint);
             ApplyClassToJoint(element, joint);
             
             if (joint != null)
@@ -613,7 +616,7 @@ namespace MujocoUnity
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "damping":
-                        spring.damper = GlobalDamping + float.Parse(attribute.Value);
+                        spring.damper = GlobalDamping;// + float.Parse(attribute.Value);
                         break;
                     case "limited":
 						if (hingeJoint != null)
@@ -735,7 +738,8 @@ namespace MujocoUnity
                         mujocoJoint.CtrlRange = ctrlRange;
                         break;
                     case "gear":
-                        var gear = float.Parse(attribute.Value);
+                        // var gear = float.Parse(attribute.Value);
+                        var gear = 20;
                         mujocoJoint.Gear = gear;
                         spring.spring = gear;
                         break;
