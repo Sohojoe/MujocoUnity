@@ -167,13 +167,15 @@ namespace MujocoUnity
 			procCap.radius = width;
 			procCap.CreateMesh();
 
-            instance.transform.parent = parent.transform;
+            instance.transform.parent = parent.transform.root;			
 			instance.transform.up = offset;
 			//instance.transform.localScale = scale;
 			if (useWorldSpace){
 				instance.transform.position = position;
 			} else {
-				instance.transform.localPosition = position;
+				// instance.transform.localPosition = position;
+				instance.transform.position = position + parent.transform.position;
+				instance.transform.rotation = instance.transform.rotation*parent.transform.rotation;
 			}
 			return instance;
 		}
@@ -192,12 +194,14 @@ namespace MujocoUnity
             // return parent;
 
             var instance = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            instance.transform.parent = parent.transform;			
+            instance.transform.parent = parent.transform.root;			
 			instance.transform.localScale = scale*2;
 			if (useWorldSpace){
 				instance.transform.position = position;
 			} else {
-				instance.transform.localPosition = position;
+				// instance.transform.localPosition = position;
+				instance.transform.position = position + parent.transform.position;
+				instance.transform.rotation = instance.transform.rotation*parent.transform.rotation;
 			}
 			return instance;
 		}
