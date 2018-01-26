@@ -232,9 +232,9 @@ namespace MujocoUnity
                             break;
                         case "quat":
                             if (_useWorldSpace)
-                                body.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                                body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
                             else
-                               body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                               body.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value);
                             break;
                         case "childclass":
                             DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
