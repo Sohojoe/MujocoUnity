@@ -292,7 +292,7 @@ Prefab:
         type: 2}
       propertyPath: MujocoXml
       value: 
-      objectReference: {fileID: 4900000, guid: 98e25db80c6d448d094ca87a4a348b0e, type: 3}
+      objectReference: {fileID: 4900000, guid: 1260434e7b8104996a210e719fda9941, type: 3}
     - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
         type: 2}
       propertyPath: m_Enabled

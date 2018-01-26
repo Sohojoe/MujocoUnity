@@ -127,17 +127,31 @@ namespace MujocoUnity
                 {
                     item.gameObject.layer = layer;
                 }
-            // 
+            foreach (var item in GetComponentsInChildren<Joint>())
+                item.enablePreprocessing = false;
             if (ListOf2dScripts.FirstOrDefault(x=>x == this.name) != null)
                 foreach (var item in GetComponentsInChildren<Rigidbody>())
                 {
                     item.constraints = item.constraints | RigidbodyConstraints.FreezeRotationY;
                 }
-            // 
 
-
-            foreach (var item in GetComponentsInChildren<Joint>())
-                item.enablePreprocessing = false;
+            // // debug helpers
+            // foreach (var item in mujocoJoints)
+            //     print(item.JointName);
+            // foreach (var item in GetComponentsInChildren<Rigidbody>()) {
+            //     item.useGravity = true;
+            //     //item.mass = item.mass * 0f;
+            //     item.mass = 1f;
+            //     item.drag = 0f;
+            //     item.angularDrag = 0f;
+            // }
+            // foreach (var item in GetComponentsInChildren<HingeJoint>()) {
+            //     item.connectedMassScale = 1;  
+            //     item.massScale = 1;           
+            //     var lim = item.limits;
+            //     lim.bounceMinVelocity = 0;
+            //     item.limits = lim;
+            // }
 
             // restore positions and orientation
             this.gameObject.transform.rotation = _orginalTransformRotation;
@@ -177,7 +191,7 @@ namespace MujocoUnity
                 }
             }
         }
-
+            
 		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, List<GameObject> parentGeoms, XElement parentXdoc = null)
         {
             var joints = new List<KeyValuePair<string, Joint>>();
@@ -234,7 +248,7 @@ namespace MujocoUnity
                             if (_useWorldSpace)
                                 body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
                             else
-                               body.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                                body.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value);
                             break;
                         case "childclass":
                             DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
@@ -739,7 +753,7 @@ namespace MujocoUnity
                         break;
                     case "gear":
                         // var gear = float.Parse(attribute.Value);
-                        var gear = 20;
+                        var gear = 200;
                         mujocoJoint.Gear = gear;
                         spring.spring = gear;
                         break;
