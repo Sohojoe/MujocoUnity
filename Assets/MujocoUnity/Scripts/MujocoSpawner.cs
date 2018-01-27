@@ -191,44 +191,59 @@ namespace MujocoUnity
                 }
             }
         }
-            
-		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, List<GameObject> parentGeoms, XElement parentXdoc = null)
+		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject geom = null, GameObject parentGeom = null, XElement parentXdoc = null, List<XElement> jointDocsQueue = null)
         {
             var joints = new List<KeyValuePair<string, Joint>>();
-            List<KeyValuePair<string, Joint>> newJoints = null;
-            GameObject geom = null;
-            bool isFirstGeom = true;
-            List<GameObject> geoms = new List<GameObject>();
-            foreach (var element in xdoc.Elements("geom"))
+            jointDocsQueue = jointDocsQueue ?? new List<XElement>(); 
+            foreach (var element in xdoc.Elements())
             {
-                newJoints = new List<KeyValuePair<string, Joint>>();
-                var lastGeom = geom;
-                geom = ParseGeom(element, parentBody);
-                if (geom != null) {
-                    //geom.transform.parent = lastGeom?.transform ?? parentBody.transform;
-                    geoms.Add(geom);
-                }
-                if (isFirstGeom){
-                    if (xdoc.Element("joint") != null && parentGeoms != null && parentGeoms.Count > 0 && geom != null) {
-                        foreach (var parentGeom in parentGeoms)
-                            newJoints.AddRange(ParseJoint(xdoc, parentGeom, geom));
-                    }
-                    else if (parentXdoc?.Element("joint") != null && parentGeoms != null && parentGeoms.Count > 0 && geom != null)
-                        foreach (var parentGeom in parentGeoms) 
-                            newJoints.AddRange(ParseJoint(parentXdoc, parentGeom, geom));
-                }
-                if (newJoints.Count > 0) joints.AddRange(newJoints);
-                isFirstGeom = false;
-            }
-            
+                switch (element.Name.LocalName)
+                {
+                    case "geom":
+                        geom = ParseGeom(element, parentBody);
 
-            var name = "body";
-            var elements = xdoc.Elements(name);
+                        if(parentGeom && jointDocsQueue.Count > 0){
+                            foreach (var jointDoc in jointDocsQueue)
+                            {
+                                var js = ParseJoint(jointDoc, parentGeom, geom);
+                                if(js != null) joints.AddRange(js);
+                            }
+                        }
+                        else if (parentGeom != null){
+                            var fixedJoint = parentGeom.AddComponent<FixedJoint>();
+                            fixedJoint.connectedBody = geom.GetComponent<Rigidbody>();                            
+                        }
+                        jointDocsQueue = new List<XElement>();
+                        // if (parentGeom != null){
+                        //     var parentJoints = parentGeom.GetComponents<Joint>();
+                        //     if (parentJoints != null && parentJoints.Length > 0) {
+                        //         foreach (var item in parentJoints)
+                        //             item.connectedBody = geom.GetComponent<Rigidbody>();
+                        //     }
+                        //     else {
+                        //         var fixedJoint = parentGeom.AddComponent<FixedJoint>();
+                        //         fixedJoint.connectedBody = geom.GetComponent<Rigidbody>();
+                        //     }
+                        // }
+                        parentGeom = geom;
+                        break;
+                    case "joint":
+                        jointDocsQueue.Add(element);
+                        break;
+                    case "body":
+                        break;
+                    case "light":
+                    case "camera":
+                        break;
+                    default:
+                        throw new NotImplementedException(element.Name.LocalName);
+                }
+            }
+
+            var elements = xdoc.Elements("body");
             foreach (var element in elements) {
 				var body = new GameObject();
                 body.transform.parent = this.transform;
-				//body.transform.parent = parentBody.transform;
-				// body.transform.parent = geom?.transform ?? parentBody.transform;
                 
                 foreach (var attribute in element.Attributes())
                 {
@@ -267,8 +282,83 @@ namespace MujocoUnity
                             break;
                     }
                 }
-                var nextParentGeoms = geom != null ? new List<GameObject>{geom} : parentGeoms;
-				newJoints = ParseBody(element, element.Attribute("name")?.Value, body, nextParentGeoms, xdoc);
+                // var nextParentGeoms = geom != null ? new List<GameObject>{geom} : parentGeoms;
+				var newJoints = ParseBody(element, element.Attribute("name")?.Value, body, geom, parentGeom, xdoc);
+                if (newJoints != null) joints.AddRange(newJoints);
+            }
+            return joints;            
+        }        
+		List<KeyValuePair<string, Joint>> oldParseBody(XElement xdoc, string bodyName, GameObject parentBody, List<GameObject> parentGeoms, XElement parentXdoc = null)
+        {
+            var joints = new List<KeyValuePair<string, Joint>>();
+            List<KeyValuePair<string, Joint>> newJoints = null;
+            GameObject geom = null;
+            List<GameObject> geoms = new List<GameObject>();
+
+            foreach (var element in xdoc.Elements("geom"))
+            {
+                geom = ParseGeom(element, parentBody);
+                if (geom == null || parentGeoms == null)
+                    continue;
+                geoms.Add(geom);
+                foreach (var parentGeom in parentGeoms)
+                {
+                    var js = ParseJoint(parentXdoc, parentGeom, geom);
+                    if (js?.Count >0)
+                        joints.AddRange(js);
+                    else {
+                        var f = parentGeom.AddComponent<FixedJoint>();
+                        f.connectedBody = geom.GetComponent<Rigidbody>();
+                    }
+                }
+            }
+
+            var name = "body";
+            var elements = xdoc.Elements(name);
+            foreach (var element in elements) {
+				var body = new GameObject();
+                body.transform.parent = this.transform;
+                
+                foreach (var attribute in element.Attributes())
+                {
+                    switch (attribute.Name.LocalName)
+                    {
+                        case "name":
+                            //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+							body.name = attribute.Value;
+                            break;
+                        case "pos":
+                            // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            if (_useWorldSpace)
+    							body.transform.position = MujocoHelper.ParsePosition(attribute.Value);
+                            else {
+    							//body.transform.localPosition = MujocoHelper.ParsePosition(attribute.Value);
+                                body.transform.position = MujocoHelper.ParsePosition(attribute.Value) + parentBody.transform.position;// (geom ?? parentBody).transform.position;
+                            }
+                            break;
+                        case "quat":
+                            if (_useWorldSpace)
+                                body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                            else {
+                                //body.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                                body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value) * (geom ?? parentBody).transform.rotation;
+                            }
+                            break;
+                        case "childclass":
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        case "euler":
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        default:
+                            DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
+                            throw new NotImplementedException(attribute.Name.LocalName);
+                            break;
+                    }
+                }
+                // var nextParentGeoms = geom != null ? new List<GameObject>{geom} : parentGeoms;
+                var nextParentGeoms = geoms;
+				newJoints = oldParseBody(element, element.Attribute("name")?.Value, body, nextParentGeoms, xdoc);
                 if (newJoints != null) joints.AddRange(newJoints);
             }
             return joints;
@@ -572,10 +662,10 @@ namespace MujocoUnity
         //GameObject parentGeom, GameObject parentBody)
 		List<KeyValuePair<string, Joint>> ParseJoint(XElement xdoc, GameObject parentGeom, GameObject childGeom)
 		{
-            var name = "joint";
 			var joints = new List<KeyValuePair<string, Joint>>();
 
-            var element = xdoc.Element(name);
+            // var element = xdoc.Element("joint");
+            var element = xdoc;
             if (element == null)
                 return joints;
 
@@ -592,13 +682,15 @@ namespace MujocoUnity
 					DebugPrint($"ParseJoint: Creating type:{type} ");
 					parentGeom.gameObject.AddComponent<HingeJoint> ();
 					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
-                    joint.connectedBody = childGeom.GetComponent<Rigidbody>();
+                    if (childGeom != null)
+                        joint.connectedBody = childGeom.GetComponent<Rigidbody>();
 					break;
 				case "free":
 					DebugPrint($"ParseJoint: Creating type:{type} ");
 					parentGeom.gameObject.AddComponent<FixedJoint> ();
 					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
-                    joint.connectedBody = childGeom.GetComponent<Rigidbody>();
+                    if (childGeom != null)
+                        joint.connectedBody = childGeom.GetComponent<Rigidbody>();
 					break;
 				default:
 					DebugPrint($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
@@ -709,7 +801,7 @@ namespace MujocoUnity
 				DebugPrint($"--- WARNING: ParseGears: no jointName found. Ignoring ({element.ToString()}");
 				return mujocoJoints;
 			}
-            var matches = joints.Where(x=>x.Key == jointName)?.Select(x=>x.Value);
+            var matches = joints.Where(x=>x.Key.ToLowerInvariant() == jointName.ToLowerInvariant())?.Select(x=>x.Value);
             if(matches == null){
 				DebugPrint($"--- ERROR: ParseGears: joint:'{jointName}' was not found in joints. Ignoring ({element.ToString()}");
 				return mujocoJoints;                
