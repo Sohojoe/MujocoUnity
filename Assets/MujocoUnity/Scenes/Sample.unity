@@ -292,7 +292,7 @@ Prefab:
         type: 2}
       propertyPath: MujocoXml
       value: 
-      objectReference: {fileID: 4900000, guid: 34b2d16d4dc574df78fc0c1faf7bb46e, type: 3}
+      objectReference: {fileID: 4900000, guid: 98e25db80c6d448d094ca87a4a348b0e, type: 3}
     - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
         type: 2}
       propertyPath: m_Enabled
@@ -306,7 +306,7 @@ Prefab:
     - target: {fileID: 114652901231369746, guid: 41661c22107be4a20af7212d6eb0d729,
         type: 2}
       propertyPath: applyRandomToAll
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 114652901231369746, guid: 41661c22107be4a20af7212d6eb0d729,
         type: 2}
@@ -356,6 +356,11 @@ Prefab:
         type: 2}
       propertyPath: HackFlipZList.Array.data[3]
       value: walker2
+      objectReference: {fileID: 0}
+    - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: GravityOff
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 41661c22107be4a20af7212d6eb0d729, type: 2}
