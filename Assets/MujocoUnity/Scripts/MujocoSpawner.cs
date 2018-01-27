@@ -242,9 +242,11 @@ namespace MujocoUnity
                 }
             }
 
+            var bodies = new List<GameObject>();
             var elements = xdoc.Elements("body");
             foreach (var element in elements) {
 				var body = new GameObject();
+                bodies.Add(body);
                 body.transform.parent = this.transform;
                 
                 foreach (var attribute in element.Attributes())
@@ -285,6 +287,10 @@ namespace MujocoUnity
                 // var nextParentGeoms = geom != null ? new List<GameObject>{geom} : parentGeoms;
 				var newJoints = ParseBody(element, element.Attribute("name")?.Value, body, geom, parentGeom, xdoc);
                 if (newJoints != null) joints.AddRange(newJoints);
+            }
+            foreach (var item in bodies)
+            {
+                GameObject.Destroy(item);
             }
             return joints;            
         }        
