@@ -207,7 +207,7 @@ namespace MujocoUnity
                         if(parentGeom && jointDocsQueue.Count > 0){
                             foreach (var jointDoc in jointDocsQueue)
                             {
-                                var js = ParseJoint(jointDoc, parentGeom, geom);
+                                var js = ParseJoint(jointDoc, parentGeom, geom, parentBody);
                                 if(js != null) joints.AddRange(js);
                             }
                         }
@@ -586,7 +586,7 @@ namespace MujocoUnity
 			return joint;
 		}
         //GameObject parentGeom, GameObject parentBody)
-		List<KeyValuePair<string, Joint>> ParseJoint(XElement xdoc, GameObject parentGeom, GameObject childGeom)
+		List<KeyValuePair<string, Joint>> ParseJoint(XElement xdoc, GameObject parentGeom, GameObject childGeom, GameObject body)
 		{
 			var joints = new List<KeyValuePair<string, Joint>>();
 
@@ -631,15 +631,15 @@ namespace MujocoUnity
             // }
 			
             if(_defaultJoint != null)
-                ApplyClassToJoint(_defaultJoint, joint);
-            ApplyClassToJoint(element, joint);
+                ApplyClassToJoint(_defaultJoint, joint, body);
+            ApplyClassToJoint(element, joint, body);
             
             if (joint != null)
                 joints.Add(new KeyValuePair<string,Joint>(jointName, joint));	
 			return joints;
 		}
 
-        void ApplyClassToJoint(XElement classElement, Joint joint)
+        void ApplyClassToJoint(XElement classElement, Joint joint, GameObject body)
         {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
@@ -666,7 +666,12 @@ namespace MujocoUnity
                         // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "pos":
-                        // NOTE: handle in setup
+                        //joint.anchor = MujocoHelper.ParsePosition(attribute.Value);
+                        // if (_useWorldSpace)
+                        //     joint.anchor = MujocoHelper.ParsePosition(attribute.Value);
+                        // else {
+                        //     joint.anchor = MujocoHelper.ParsePosition(attribute.Value) + body.transform.position;
+                        // }
                         break;
                     case "range":
 						limits.min = MujocoHelper.ParseGetMin(attribute.Value);
@@ -775,8 +780,8 @@ namespace MujocoUnity
                         mujocoJoint.CtrlRange = ctrlRange;
                         break;
                     case "gear":
-                        // var gear = float.Parse(attribute.Value);
-                        var gear = 200;
+                        var gear = float.Parse(attribute.Value);
+                        //var gear = 200;
                         mujocoJoint.Gear = gear;
                         spring.spring = gear;
                         break;
