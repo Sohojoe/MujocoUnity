@@ -15,6 +15,7 @@ namespace MujocoUnity
         public PhysicMaterial PhysicMaterial;
         public LayerMask CollisionLayer; // used to disable colliding with self
         public bool DebugOutput;
+        public bool GravityOff;
         public string[] ListOf2dScripts = new string[] {"half_cheetah", "hopper", "walker2d"};
         public string[] HackFlipZList = new string[] {"humanoid", "humanoidstandup", "hopper", "walker2d"};
 
@@ -138,13 +139,14 @@ namespace MujocoUnity
             // // debug helpers
             // foreach (var item in mujocoJoints)
             //     print(item.JointName);
-            // foreach (var item in GetComponentsInChildren<Rigidbody>()) {
-            //     item.useGravity = true;
+            foreach (var item in GetComponentsInChildren<Rigidbody>()) {
+                if (GravityOff)
+                    item.useGravity = false;
             //     //item.mass = item.mass * 0f;
             //     item.mass = 1f;
             //     item.drag = 0f;
             //     item.angularDrag = 0f;
-            // }
+            }
             // foreach (var item in GetComponentsInChildren<HingeJoint>()) {
             //     item.connectedMassScale = 1;  
             //     item.massScale = 1;           
