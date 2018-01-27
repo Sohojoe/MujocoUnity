@@ -258,7 +258,6 @@ namespace MujocoUnity
                             if (_useWorldSpace)
     							body.transform.position = MujocoHelper.ParsePosition(attribute.Value);
                             else {
-    							//body.transform.localPosition = MujocoHelper.ParsePosition(attribute.Value);
                                 body.transform.position = MujocoHelper.ParsePosition(attribute.Value) + parentBody.transform.position;// (geom ?? parentBody).transform.position;
                             }
                             break;
@@ -266,8 +265,7 @@ namespace MujocoUnity
                             if (_useWorldSpace)
                                 body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
                             else {
-                                //body.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value);
-                                body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value) * (geom ?? parentBody).transform.rotation;
+                                body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value) * parentBody.transform.rotation;
                             }
                             break;
                         case "childclass":
@@ -288,81 +286,7 @@ namespace MujocoUnity
             }
             return joints;            
         }        
-		List<KeyValuePair<string, Joint>> oldParseBody(XElement xdoc, string bodyName, GameObject parentBody, List<GameObject> parentGeoms, XElement parentXdoc = null)
-        {
-            var joints = new List<KeyValuePair<string, Joint>>();
-            List<KeyValuePair<string, Joint>> newJoints = null;
-            GameObject geom = null;
-            List<GameObject> geoms = new List<GameObject>();
 
-            foreach (var element in xdoc.Elements("geom"))
-            {
-                geom = ParseGeom(element, parentBody);
-                if (geom == null || parentGeoms == null)
-                    continue;
-                geoms.Add(geom);
-                foreach (var parentGeom in parentGeoms)
-                {
-                    var js = ParseJoint(parentXdoc, parentGeom, geom);
-                    if (js?.Count >0)
-                        joints.AddRange(js);
-                    else {
-                        var f = parentGeom.AddComponent<FixedJoint>();
-                        f.connectedBody = geom.GetComponent<Rigidbody>();
-                    }
-                }
-            }
-
-            var name = "body";
-            var elements = xdoc.Elements(name);
-            foreach (var element in elements) {
-				var body = new GameObject();
-                body.transform.parent = this.transform;
-                
-                foreach (var attribute in element.Attributes())
-                {
-                    switch (attribute.Name.LocalName)
-                    {
-                        case "name":
-                            //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-							body.name = attribute.Value;
-                            break;
-                        case "pos":
-                            // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                            if (_useWorldSpace)
-    							body.transform.position = MujocoHelper.ParsePosition(attribute.Value);
-                            else {
-    							//body.transform.localPosition = MujocoHelper.ParsePosition(attribute.Value);
-                                body.transform.position = MujocoHelper.ParsePosition(attribute.Value) + parentBody.transform.position;// (geom ?? parentBody).transform.position;
-                            }
-                            break;
-                        case "quat":
-                            if (_useWorldSpace)
-                                body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
-                            else {
-                                //body.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value);
-                                body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value) * (geom ?? parentBody).transform.rotation;
-                            }
-                            break;
-                        case "childclass":
-                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                            break;
-                        case "euler":
-                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                            break;
-                        default:
-                            DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
-                            throw new NotImplementedException(attribute.Name.LocalName);
-                            break;
-                    }
-                }
-                // var nextParentGeoms = geom != null ? new List<GameObject>{geom} : parentGeoms;
-                var nextParentGeoms = geoms;
-				newJoints = oldParseBody(element, element.Attribute("name")?.Value, body, nextParentGeoms, xdoc);
-                if (newJoints != null) joints.AddRange(newJoints);
-            }
-            return joints;
-        }
 		GameObject ParseGeom(XElement element, GameObject parent)
         {
             var name = "geom";
@@ -410,12 +334,12 @@ namespace MujocoUnity
 			geom.AddRigidBody();
 
             if (_defaultGeom != null)
-                ApplyClassToGeom(_defaultGeom, geom);
-            ApplyClassToGeom(element, geom);
+                ApplyClassToGeom(_defaultGeom, geom, parent);
+            ApplyClassToGeom(element, geom, parent);
             
 			return geom;
         }
-        void ApplyClassToGeom(XElement classElement, GameObject geom)
+        void ApplyClassToGeom(XElement classElement, GameObject geom, GameObject parentBody)
         {
             foreach (var attribute in classElement.Attributes())
             {
@@ -607,7 +531,7 @@ namespace MujocoUnity
                         if (_useWorldSpace)
                             geom.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
                         else
-                            geom.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                            geom.transform.localRotation = MujocoHelper.ParseQuaternion(attribute.Value) * parentBody.transform.rotation;
                         break;
                     case "axisangle": // optional
                         // These are the quantities (x, y, z, a) mentioned above. The last number is the angle of rotation,
