@@ -628,13 +628,6 @@ namespace MujocoUnity
 					DebugPrint($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
 					return joints;
 			}
-			// HingeJoint hingeJoint = joint as HingeJoint;
-            // FixedJoint fixedJoint = joint as FixedJoint;
-            // if (hingeJoint != null){
-            //     var sp = hingeJoint.spring;
-            //     sp.damper = _damping;
-            //     hingeJoint.spring = sp;                
-            // }
 			
             if(_defaultJoint != null)
                 ApplyClassToJoint(_defaultJoint, joint, body);
@@ -649,7 +642,8 @@ namespace MujocoUnity
         {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
-            JointSpring spring = hingeJoint?.spring ?? new JointSpring();
+            // JointSpring spring = hingeJoint?.spring ?? new JointSpring();
+            JointMotor motor = hingeJoint?.motor ?? new JointMotor();
             JointLimits limits = hingeJoint?.limits ?? new JointLimits();
             foreach (var attribute in classElement.Attributes())
             {
@@ -659,7 +653,7 @@ namespace MujocoUnity
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "damping":
-                        spring.damper = GlobalDamping;// + float.Parse(attribute.Value);
+                        //spring.damper = GlobalDamping;// + float.Parse(attribute.Value);
                         break;
                     case "limited":
 						if (hingeJoint != null)
@@ -682,6 +676,7 @@ namespace MujocoUnity
                     case "range":
 						limits.min = MujocoHelper.ParseGetMin(attribute.Value);
 						limits.max = MujocoHelper.ParseGetMax(attribute.Value);
+                        limits.bounceMinVelocity = 0f;
 						hingeJoint.useLimits = true;
                         break;
                     case "type":
@@ -706,7 +701,8 @@ namespace MujocoUnity
                 }
             }
             if(hingeJoint != null) {
-                hingeJoint.spring = spring;                
+                // hingeJoint.spring = spring;                
+                hingeJoint.motor = motor;                
                 hingeJoint.limits = limits;
             }
         }
@@ -747,10 +743,14 @@ namespace MujocoUnity
             foreach (Joint joint in matches)
             {
                 HingeJoint hingeJoint = joint as HingeJoint;
-                JointSpring spring = new JointSpring(); 
+                // JointSpring spring = new JointSpring(); 
+                JointMotor motor = new JointMotor(); 
                 if (hingeJoint != null) {
-                    hingeJoint.useSpring = true;
-                    spring = hingeJoint.spring;
+                    // hingeJoint.useSpring = true;
+                    // spring = hingeJoint.spring;
+                    hingeJoint.useMotor = true;
+                    motor = hingeJoint.motor;
+                    motor.freeSpin = true;
                 }
                 var mujocoJoint = new MujocoJoint{
                     Joint = joint,
@@ -769,7 +769,8 @@ namespace MujocoUnity
         {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
-            JointSpring spring = hingeJoint?.spring ?? new JointSpring();
+            // JointSpring spring = hingeJoint?.spring ?? new JointSpring();
+            JointMotor motor = hingeJoint?.motor ?? new JointMotor();
             JointLimits limits = hingeJoint?.limits ?? new JointLimits();
             foreach (var attribute in classElement.Attributes())
             {
@@ -789,7 +790,8 @@ namespace MujocoUnity
                         var gear = float.Parse(attribute.Value);
                         //var gear = 200;
                         mujocoJoint.Gear = gear;
-                        spring.spring = gear;
+                        // spring.spring = gear;
+                        motor.force = gear;
                         break;
                     case "name":
                         var objName = attribute.Value;
@@ -802,7 +804,8 @@ namespace MujocoUnity
                 }
             }
             if(hingeJoint != null) {
-                hingeJoint.spring = spring;                
+                // hingeJoint.spring = spring;                
+                hingeJoint.motor = motor;                
                 hingeJoint.limits = limits;
             }
         }

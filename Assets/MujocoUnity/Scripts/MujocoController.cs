@@ -64,7 +64,9 @@ namespace MujocoUnity
 		void ApplyAction(MujocoJoint mJoint, float? target = null)
         {
             HingeJoint hingeJoint = mJoint.Joint as HingeJoint;
-            if (hingeJoint != null)
+            if (hingeJoint == null)
+                return;
+            if (hingeJoint.useSpring)
             {
 	            var inputScale = mJoint.CtrlRange.y - mJoint.CtrlRange.x;
                 if (!target.HasValue) // handle random
@@ -84,7 +86,20 @@ namespace MujocoUnity
                 var outputTarget = min+(inputTarget * outputScale);
                 js.targetPosition = outputTarget;
                 hingeJoint.spring = js;
-            }        
+            }
+            else if (hingeJoint.useMotor)
+            {
+                if (!target.HasValue) // handle random
+                    target = Random.value * 2 - 1;
+
+                target = Mathf.Max(-1f, target.Value);
+                target = Mathf.Min(1f, target.Value);
+
+                JointMotor jm;
+                jm = hingeJoint.motor;
+                jm.targetVelocity = target.Value * 1000f;
+                hingeJoint.motor = jm;
+            }
         }
     }
 }
