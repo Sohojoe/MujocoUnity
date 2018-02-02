@@ -14,6 +14,7 @@ namespace MujocoUnity
         public Material Material;
         public PhysicMaterial PhysicMaterial;
         public LayerMask CollisionLayer; // used to disable colliding with self
+        public bool UseMujocoTimestep; // use option timestep=xxx to set physics timestep
         public bool DebugOutput;
         public bool GravityOff;
         public string[] ListOf2dScripts = new string[] {"half_cheetah", "hopper", "walker2d"};
@@ -107,8 +108,8 @@ namespace MujocoUnity
             this.gameObject.transform.rotation = new Quaternion();
             this.gameObject.transform.position = new Vector3();
 
-            var joints = ParseBody(element.Element("worldbody"), "worldbody", this.gameObject, null);
-	        // <actuator>		<motor gear="100" joint="slider" name="slide"/>
+            // var joints = ParseBody(element.Element("worldbody"), "worldbody", this.gameObject, null);
+            var joints = ParseBody(element.Element("worldbody"), this.gameObject);
             var mujocoJoints = ParseGears(element.Element("actuator"), joints);
             
             GetComponent<MujocoController>().SetMujocoJoints(mujocoJoints);
@@ -143,9 +144,9 @@ namespace MujocoUnity
                 if (GravityOff)
                     item.useGravity = false;
             //     //item.mass = item.mass * 0f;
-            //     item.mass = 1f;
-            //     item.drag = 0f;
-            //     item.angularDrag = 0f;
+                item.mass = 10f;
+                item.drag = 0f;
+                item.angularDrag = 0f;
             }
             // foreach (var item in GetComponentsInChildren<HingeJoint>()) {
             //     item.connectedMassScale = 1;  
@@ -162,9 +163,34 @@ namespace MujocoUnity
 
         void ParseCompilerOptions(XElement xdoc)
         {
-            var name = "compiler";
-            var elements = xdoc.Elements(name);
-            foreach (var element in elements) {
+            foreach (var element in xdoc.Elements("option")) {
+                foreach (var attribute in element.Attributes())
+                {
+                    switch (attribute.Name.LocalName)
+                    {
+                        case "integrator":
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        case "iterations":
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        case "solver":
+                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                            break;
+                        case "timestep":
+                            if (UseMujocoTimestep)
+                                Time.fixedDeltaTime = float.Parse(attribute.Value);
+                            else
+                                print($"--*** IGNORING timestep=\"{attribute.Value}\" as UseMujocoTimestep == false");
+                            break;
+                        default:
+                            DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
+                            throw new NotImplementedException(attribute.Name.LocalName);
+                            break;
+                    }
+                }
+            }
+            foreach (var element in xdoc.Elements("compiler")) {
                 foreach (var attribute in element.Attributes())
                 {
                     switch (attribute.Name.LocalName)
@@ -193,10 +219,20 @@ namespace MujocoUnity
                 }
             }
         }
-		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject geom = null, GameObject parentGeom = null, XElement parentXdoc = null, List<XElement> jointDocsQueue = null)
+		// List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, string bodyName, GameObject parentBody, GameObject geom = null, GameObject parentGeom = null, XElement parentXdoc = null, List<XElement> jointDocsQueue = null)
+        
+        
+        private class JointDocQueueItem{
+            public XElement JointXDoc {get;set;}
+            public GameObject ParentGeom {get;set;}
+            public GameObject ParentBody {get;set;}
+        }        
+		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, GameObject parentBody, GameObject geom = null, GameObject parentGeom = null, List<JointDocQueueItem> jointDocsQueue = null)
         {
             var joints = new List<KeyValuePair<string, Joint>>();
-            jointDocsQueue = jointDocsQueue ?? new List<XElement>(); 
+            jointDocsQueue = jointDocsQueue ?? new List<JointDocQueueItem>(); 
+            var bodies = new List<GameObject>();
+
             foreach (var element in xdoc.Elements())
             {
                 switch (element.Name.LocalName)
@@ -205,9 +241,13 @@ namespace MujocoUnity
                         geom = ParseGeom(element, parentBody);
 
                         if(parentGeom && jointDocsQueue.Count > 0){
-                            foreach (var jointDoc in jointDocsQueue)
+                            foreach (var jointDocQueueItem in jointDocsQueue)
                             {
-                                var js = ParseJoint(jointDoc, parentGeom, geom, parentBody);
+                                var js = ParseJoint(
+                                    jointDocQueueItem.JointXDoc, 
+                                    jointDocQueueItem.ParentGeom, 
+                                    geom, 
+                                    jointDocQueueItem.ParentBody);
                                 if(js != null) joints.AddRange(js);
                             }
                         }
@@ -215,24 +255,24 @@ namespace MujocoUnity
                             var fixedJoint = parentGeom.AddComponent<FixedJoint>();
                             fixedJoint.connectedBody = geom.GetComponent<Rigidbody>();                            
                         }
-                        jointDocsQueue = new List<XElement>();
-                        // if (parentGeom != null){
-                        //     var parentJoints = parentGeom.GetComponents<Joint>();
-                        //     if (parentJoints != null && parentJoints.Length > 0) {
-                        //         foreach (var item in parentJoints)
-                        //             item.connectedBody = geom.GetComponent<Rigidbody>();
-                        //     }
-                        //     else {
-                        //         var fixedJoint = parentGeom.AddComponent<FixedJoint>();
-                        //         fixedJoint.connectedBody = geom.GetComponent<Rigidbody>();
-                        //     }
-                        // }
+                        jointDocsQueue = new List<JointDocQueueItem>();
                         parentGeom = geom;
                         break;
                     case "joint":
-                        jointDocsQueue.Add(element);
+                        jointDocsQueue.Add(new JointDocQueueItem {
+                                JointXDoc = element,
+                                ParentGeom = geom,
+                                ParentBody = parentBody,
+                            });
                         break;
                     case "body":
+                        var body = new GameObject();
+                        bodies.Add(body);
+                        body.transform.parent = this.transform;
+                        ApplyClassToBody(element, body, parentBody);
+                        // var newJoints = ParseBody(element, element.Attribute("name")?.Value, body, geom, parentGeom, xdoc, jointDocsQueue);
+                        var newJoints = ParseBody(element, body, geom, parentGeom, jointDocsQueue);
+                        if (newJoints != null) joints.AddRange(newJoints);
                         break;
                     case "light":
                     case "camera":
@@ -242,58 +282,49 @@ namespace MujocoUnity
                 }
             }
 
-            var bodies = new List<GameObject>();
-            var elements = xdoc.Elements("body");
-            foreach (var element in elements) {
-				var body = new GameObject();
-                bodies.Add(body);
-                body.transform.parent = this.transform;
-                
-                foreach (var attribute in element.Attributes())
-                {
-                    switch (attribute.Name.LocalName)
-                    {
-                        case "name":
-                            //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-							body.name = attribute.Value;
-                            break;
-                        case "pos":
-                            // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                            if (_useWorldSpace)
-    							body.transform.position = MujocoHelper.ParsePosition(attribute.Value);
-                            else {
-                                body.transform.position = MujocoHelper.ParsePosition(attribute.Value) + parentBody.transform.position;// (geom ?? parentBody).transform.position;
-                            }
-                            break;
-                        case "quat":
-                            if (_useWorldSpace)
-                                body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
-                            else {
-                                body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value) * parentBody.transform.rotation;
-                            }
-                            break;
-                        case "childclass":
-                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                            break;
-                        case "euler":
-                            DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
-                            break;
-                        default:
-                            DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
-                            throw new NotImplementedException(attribute.Name.LocalName);
-                            break;
-                    }
-                }
-                // var nextParentGeoms = geom != null ? new List<GameObject>{geom} : parentGeoms;
-				var newJoints = ParseBody(element, element.Attribute("name")?.Value, body, geom, parentGeom, xdoc);
-                if (newJoints != null) joints.AddRange(newJoints);
-            }
             foreach (var item in bodies)
-            {
                 GameObject.Destroy(item);
-            }
+            
             return joints;            
-        }        
+        }
+        void ApplyClassToBody(XElement classElement, GameObject body, GameObject parentBody)
+        {
+            foreach (var attribute in classElement.Attributes())
+            {
+                switch (attribute.Name.LocalName)
+                {
+                    case "name":
+                        //DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        body.name = attribute.Value;
+                        break;
+                    case "pos":
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        if (_useWorldSpace)
+                            body.transform.position = MujocoHelper.ParsePosition(attribute.Value);
+                        else {
+                            body.transform.position = MujocoHelper.ParsePosition(attribute.Value) + parentBody.transform.position;// (geom ?? parentBody).transform.position;
+                        }
+                        break;
+                    case "quat":
+                        if (_useWorldSpace)
+                            body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value);
+                        else {
+                            body.transform.rotation = MujocoHelper.ParseQuaternion(attribute.Value) * parentBody.transform.rotation;
+                        }
+                        break;
+                    case "childclass":
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    case "euler":
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        break;
+                    default:
+                        DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
+                        throw new NotImplementedException(attribute.Name.LocalName);
+                        break;
+                }
+            }
+        }
 
 		GameObject ParseGeom(XElement element, GameObject parent)
         {
@@ -666,11 +697,11 @@ namespace MujocoUnity
                         // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "pos":
-                        //joint.anchor = MujocoHelper.ParsePosition(attribute.Value);
+                        //joint.anchor += MujocoHelper.JointParsePosition(attribute.Value, _hackFlipZ);
                         // if (_useWorldSpace)
-                        //     joint.anchor = MujocoHelper.ParsePosition(attribute.Value);
+                            // joint.anchor = MujocoHelper.ParsePosition(attribute.Value);
                         // else {
-                        //     joint.anchor = MujocoHelper.ParsePosition(attribute.Value) + body.transform.position;
+                            // joint.anchor = MujocoHelper.ParsePosition(attribute.Value) + body.transform.position;
                         // }
                         break;
                     case "range":

@@ -97,7 +97,7 @@ namespace MujocoUnity
 
                 JointMotor jm;
                 jm = hingeJoint.motor;
-                jm.targetVelocity = target.Value * 1000f;
+                jm.targetVelocity = target.Value * 200f;
                 hingeJoint.motor = jm;
             }
         }

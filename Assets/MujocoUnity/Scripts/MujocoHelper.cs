@@ -78,6 +78,24 @@ namespace MujocoUnity
 				vec3.z = 0-vec3.z;
 			return vec3;
 		}
+
+		static public Vector3 JointParsePosition(string str, bool hackFlipZ)
+		{
+			string[] words = str.Split(_delimiterChars);
+			float x = Evaluate(words[0]);
+			float y = Evaluate(words[1]);
+			float z = Evaluate(words[2]);
+			Vector3 vec3;
+            if (MujocoFlipYZ)
+    			vec3 = new Vector3(x,z,y);
+			else
+				vec3 = new Vector3(x,y,z);
+			if (hackFlipZ)
+				vec3.z = 0-vec3.z;
+			// vec3.y = 0-vec3.y;
+			return vec3;
+		}
+		
 		static public Vector3 ParsePosition(string str)
 		{
 			string[] words = str.Split(_delimiterChars);
