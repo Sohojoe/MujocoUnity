@@ -7,40 +7,16 @@ namespace MujocoUnity
     public static class MujocoHelper
     {
         static readonly bool MujocoFlipYZ = true;
-		static Quaternion _rotate = Quaternion.AngleAxis(180, Vector3.up);
-		static GameObject _dummyGo = new GameObject();
         static public void AddRigidBody(this GameObject onObj)
         {
             onObj.AddComponent<Rigidbody>();
             var rb = onObj.GetComponent<Rigidbody>();
             rb.useGravity = true;
         }
-        // static public void SetStartEnd(this GameObject onObj, Vector3 start, Vector3 end)
-        // {
-        //     onObj.transform.localPosition = start;
-        //     // onObj.transform.localScale = end;
-
-        //     var size = onObj.GetComponent<Renderer> ().bounds.size;
-        //     Vector3 rescale = onObj.transform.localScale;
-        //     rescale.x = end.x * rescale.x / size.x;
-        //     rescale.y = end.y * rescale.y / size.y;
-        //     rescale.z = end.z * rescale.z / size.z;
-        //     onObj.transform.localScale = rescale;
-        // }	  
 
 		static Vector3 RightToLeft(Vector3 rightHanded, bool hackFlipZ = false)
 		{
-			// _dummyGo.transform.eulerAngles = Vector3.zero;
- 			// _dummyGo.transform.Rotate(-rightHanded.x, -rightHanded.y, rightHanded.z);{
-			// Flipping x axis instead.
     		return new Vector3(-rightHanded.x, rightHanded.z, -rightHanded.y);
-		}
-		static Vector3 RightToLeftAxis(Vector3 rightHanded)
-		{
-			_dummyGo.transform.eulerAngles = Vector3.zero;
- 			// _dummyGo.transform.Rotate(rightHanded.y, rightHanded.x, rightHanded.z);
- 			_dummyGo.transform.Rotate(-rightHanded.x, rightHanded.y, -rightHanded.z);
-			return (_dummyGo.transform.eulerAngles);
 		}
     
     	static char[] _delimiterChars = { ' ', ',', ':', '\t' };
@@ -88,17 +64,6 @@ namespace MujocoUnity
 			float z = Evaluate(words[2]);
 			Vector3 vec3 = new Vector3(x,y,z);
 			return RightToLeft(vec3);
-			// return vec3;
-			// vec3 = new Vector3(x,z,y);
-			// vec3 = _rotate * vec3;
-			// return vec3;
-            // if (MujocoFlipYZ)
-    		// 	vec3 = new Vector3(x,z,y);
-			// else
-			// 	vec3 = new Vector3(x,y,z);
-			// if (hackFlipZ)
-			// 	vec3.z = 0-vec3.z;
-			// return vec3;
 		}
 
 		static public Vector3 JointParsePosition(string str, bool hackFlipZ)
@@ -109,17 +74,6 @@ namespace MujocoUnity
 			float z = Evaluate(words[2]);
 			Vector3 vec3 = new Vector3(x,y,z);
 			return RightToLeft(vec3, hackFlipZ);
-			// vec3 = new Vector3(x,z,y);
-			// vec3 = _rotate * vec3;
-			// return vec3;
-            // if (MujocoFlipYZ)
-    		// 	vec3 = new Vector3(x,z,y);
-			// else
-			// 	vec3 = new Vector3(x,y,z);
-			// if (hackFlipZ)
-			// 	vec3.z = 0-vec3.z;
-			// //vec3.y = 0-vec3.y;
-			// return vec3;
 		}
 		
 		static public Vector3 ParsePosition(string str)
@@ -130,14 +84,6 @@ namespace MujocoUnity
 			float z = Evaluate(words[2]);
 			Vector3 vec3 = new Vector3(x,y,z);
 			return RightToLeft(vec3);
-			// vec3 = new Vector3(x,z,y);
-			// vec3 = _rotate * vec3;
-			// return vec3;
-            // if (MujocoFlipYZ) {
-    		// 	vec3 = new Vector3(x,z,y);
-            // }
-			// //vec3.y = 0-vec3.y;
-			// return vec3;
 		}
 		static public Vector3 ParseFrom(string fromTo)
 		{
@@ -151,14 +97,6 @@ namespace MujocoUnity
 			float z = Evaluate(words[5]);
 			Vector3 vec3 = new Vector3(x,y,z);
 			return RightToLeft(vec3);
-			// vec3 = new Vector3(x,z,y);
-			// vec3 = _rotate * vec3;
-			// return vec3;
-            // if (MujocoFlipYZ) {
-    		// 	// vec3 = new Vector3(0-x,z,y);
-    		// 	vec3 = new Vector3(x,z,y);
-            // }            
-			// return vec3;
 		}
 
 		static public Vector2 ParseVector2(string str)
@@ -217,17 +155,6 @@ namespace MujocoUnity
 		static public GameObject CreateAtPoint(this GameObject parent, Vector3 position, float width, bool useWorldSpace)
 		{
 			var scale = new Vector3(width, width, width);
-
-            // parent.AddComponent<MeshFilter>();
-            // parent.AddComponent<SphereCollider>();
-            // parent.AddComponent<MeshRenderer>();
-            // parent.GetComponent<MeshFilter>().mesh = PrimitiveHelper.GetPrimitiveMesh(PrimitiveType.Sphere);
-            // var meshRenderer = parent.GetComponent <MeshRenderer>();
-            // meshRenderer.materials[0] = PrimitiveHelper.GetDefaultMaterial();
-			// parent.transform.localScale = scale;
-            // parent.transform.localPosition = parent.transform.localPosition+position;
-            // return parent;
-
             var instance = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             instance.transform.parent = parent.transform.root;			
 			instance.transform.localScale = scale*2;
