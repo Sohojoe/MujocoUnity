@@ -224,10 +224,18 @@ namespace MujocoUnity
         
         private class JointDocQueueItem{
             public XElement JointXDoc {get;set;}
-            public GameObject ParentGeom {get;set;}
+            public GeomItem ParentGeom {get;set;}
             public GameObject ParentBody {get;set;}
-        }        
-		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, GameObject parentBody, GameObject geom = null, GameObject parentGeom = null, List<JointDocQueueItem> jointDocsQueue = null)
+        }
+        private class GeomItem{
+            public GameObject Geom;
+            public float? Lenght;
+            public float? Size;
+            public Vector3 Lenght3D;
+            public Vector3 Start;
+            public Vector3 End;
+        }
+		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, GameObject parentBody, GeomItem geom = null, GeomItem parentGeom = null, List<JointDocQueueItem> jointDocsQueue = null)
         {
             var joints = new List<KeyValuePair<string, Joint>>();
             jointDocsQueue = jointDocsQueue ?? new List<JointDocQueueItem>(); 
@@ -240,7 +248,7 @@ namespace MujocoUnity
                     case "geom":
                         geom = ParseGeom(element, parentBody);
 
-                        if(parentGeom && jointDocsQueue.Count > 0){
+                        if(parentGeom != null && jointDocsQueue?.Count > 0){
                             foreach (var jointDocQueueItem in jointDocsQueue)
                             {
                                 var js = ParseJoint(
@@ -252,8 +260,8 @@ namespace MujocoUnity
                             }
                         }
                         else if (parentGeom != null){
-                            var fixedJoint = parentGeom.AddComponent<FixedJoint>();
-                            fixedJoint.connectedBody = geom.GetComponent<Rigidbody>();                            
+                            var fixedJoint = parentGeom.Geom.AddComponent<FixedJoint>();
+                            fixedJoint.connectedBody = geom.Geom.GetComponent<Rigidbody>();                            
                         }
                         jointDocsQueue = new List<JointDocQueueItem>();
                         parentGeom = geom;
@@ -326,10 +334,10 @@ namespace MujocoUnity
             }
         }
 
-		GameObject ParseGeom(XElement element, GameObject parent)
+		GeomItem ParseGeom(XElement element, GameObject parent)
         {
             var name = "geom";
-			GameObject geom = null;
+			GeomItem geom = null;
             
             if (element == null)
                 return null;
@@ -349,6 +357,7 @@ namespace MujocoUnity
                 print("***---***");
                 print(element);
             }
+            geom = new GeomItem();
 			switch (type)
 			{
 				case "capsule":
@@ -358,23 +367,33 @@ namespace MujocoUnity
     					size = float.Parse(element.Attribute("size")?.Value);
 					var fromto = element.Attribute("fromto").Value;
 					DebugPrint($"ParseGeom: Creating type:{type} fromto:{fromto} size:{size}");
-					geom = parent.CreateBetweenPoints(MujocoHelper.ParseFrom(fromto), MujocoHelper.ParseTo(fromto), size, _useWorldSpace);
+					geom.Geom = parent.CreateBetweenPoints(MujocoHelper.ParseFrom(fromto), MujocoHelper.ParseTo(fromto), size, _useWorldSpace);
+                    var start = MujocoHelper.ParseFrom(fromto);
+                    var end = MujocoHelper.ParseTo(fromto);
+                    var offset = end - start;
+                    // geom.Lenght = Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.y), Mathf.Abs(offset.z));
+                    geom.Lenght = offset.magnitude;//
+                    geom.Size = size;
+                    geom.Lenght3D = offset;//new Vector3(offset.x, offset.z, offset.y);
+                    geom.Start = start;
+                    geom.End = end;
 					break;
 				case "sphere":
 					size = float.Parse(element.Attribute("size")?.Value);
 					var pos = element.Attribute("pos").Value;
 					DebugPrint($"ParseGeom: Creating type:{type} pos:{pos} size:{size}");
-					geom = parent.CreateAtPoint(MujocoHelper.ParsePosition(pos), size, _useWorldSpace);
+					geom.Geom = parent.CreateAtPoint(MujocoHelper.ParsePosition(pos), size, _useWorldSpace);
+                    geom.Size = size;
 					break;
 				default:
 					DebugPrint($"--- WARNING: ParseGeom: {type} geom is not implemented. Ignoring ({element.ToString()}");
-					return geom;
+					return null;
 			}
-			geom.AddRigidBody();
+			geom.Geom.AddRigidBody();
 
             if (_defaultGeom != null)
-                ApplyClassToGeom(_defaultGeom, geom, parent);
-            ApplyClassToGeom(element, geom, parent);
+                ApplyClassToGeom(_defaultGeom, geom.Geom, parent);
+            ApplyClassToGeom(element, geom.Geom, parent);
             
 			return geom;
         }
@@ -623,7 +642,7 @@ namespace MujocoUnity
 			return joint;
 		}
         //GameObject parentGeom, GameObject parentBody)
-		List<KeyValuePair<string, Joint>> ParseJoint(XElement xdoc, GameObject parentGeom, GameObject childGeom, GameObject body)
+		List<KeyValuePair<string, Joint>> ParseJoint(XElement xdoc, GeomItem parentGeom, GeomItem childGeom, GameObject body)
 		{
 			var joints = new List<KeyValuePair<string, Joint>>();
 
@@ -643,17 +662,15 @@ namespace MujocoUnity
 			{
 				case "hinge":
 					DebugPrint($"ParseJoint: Creating type:{type} ");
-					parentGeom.gameObject.AddComponent<HingeJoint> ();
-					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
+					joint = parentGeom.Geom.gameObject.AddComponent<HingeJoint> ();
                     if (childGeom != null)
-                        joint.connectedBody = childGeom.GetComponent<Rigidbody>();
+                        joint.connectedBody = childGeom.Geom.GetComponent<Rigidbody>();
 					break;
 				case "free":
 					DebugPrint($"ParseJoint: Creating type:{type} ");
-					parentGeom.gameObject.AddComponent<FixedJoint> ();
-					joint = parentGeom.GetComponents<Joint>()?.ToList().LastOrDefault();
+					joint = parentGeom.Geom.gameObject.AddComponent<FixedJoint> ();
                     if (childGeom != null)
-                        joint.connectedBody = childGeom.GetComponent<Rigidbody>();
+                        joint.connectedBody = childGeom.Geom.GetComponent<Rigidbody>();
 					break;
 				default:
 					DebugPrint($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
@@ -661,15 +678,22 @@ namespace MujocoUnity
 			}
 			
             if(_defaultJoint != null)
-                ApplyClassToJoint(_defaultJoint, joint, body);
-            ApplyClassToJoint(element, joint, body);
+                ApplyClassToJoint(_defaultJoint, joint, parentGeom, childGeom, body);
+            ApplyClassToJoint(element, joint, parentGeom, childGeom, body);
             
             if (joint != null)
                 joints.Add(new KeyValuePair<string,Joint>(jointName, joint));	
 			return joints;
 		}
 
-        void ApplyClassToJoint(XElement classElement, Joint joint, GameObject body)
+		static GameObject _dummyGo; //TODO delete this
+        Vector3 ConvertAxis(Vector3 inAxis, Joint joint, GeomItem parentGeom, GeomItem childGeom, GameObject body)
+        {
+            Vector3 axis = new Vector3(-inAxis.x, inAxis.z, -inAxis.y);
+            var localAxis = parentGeom.Geom.transform.InverseTransformDirection(axis);
+            return localAxis;
+        }
+        void ApplyClassToJoint(XElement classElement, Joint joint, GeomItem parentGeom, GeomItem childGeom, GameObject body)
         {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
@@ -691,17 +715,130 @@ namespace MujocoUnity
                             hingeJoint.useLimits = bool.Parse(attribute.Value);
                         break;
                     case "axis":
-						joint.axis = MujocoHelper.ParseAxis(attribute.Value, _hackFlipZ);
+                        var axRot = ConvertAxis(MujocoHelper.ParseVector3NoFlipYZ(attribute.Value),joint,parentGeom, childGeom, body);
+                        joint.axis = axRot;
+						//joint.axis = MujocoHelper.ParseAxis(attribute.Value, _hackFlipZ);
                         break;
                     case "name":
                         // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "pos":
-                        //joint.anchor += MujocoHelper.JointParsePosition(attribute.Value, _hackFlipZ);
-                        // if (_useWorldSpace)
-                            // joint.anchor = MujocoHelper.ParsePosition(attribute.Value);
-                        // else {
-                            // joint.anchor = MujocoHelper.ParsePosition(attribute.Value) + body.transform.position;
+                        Vector3 jointOffset = MujocoHelper.ParsePosition(attribute.Value);
+                        if (!parentGeom.Lenght.HasValue){
+                            return;
+                        }
+
+                        var back = Vector3.Distance(parentGeom.Geom.transform.up, Vector3.back);
+                        var down = Vector3.Distance(parentGeom.Geom.transform.up, Vector3.down);
+                        var forward = Vector3.Distance(parentGeom.Geom.transform.up, Vector3.forward);
+                        var up = Vector3.Distance(parentGeom.Geom.transform.up, Vector3.up);
+                        var left = Vector3.Distance(parentGeom.Geom.transform.up, Vector3.left);
+                        var right = Vector3.Distance(parentGeom.Geom.transform.up, Vector3.right);
+                        
+                        // // var axis = MujocoHelper.ParsePosition(classElement.Attribute("axis").Value);
+                        // // var a2 = childGeom.Geom.transform.up;
+                        // // // float scale = ( parentGeom.Lenght.Value - ( parentGeom.Size.Value * 0.5f) ) ;
+                        // float scale = parentGeom.Lenght.Value * 0.5f;
+                        // // axis.Set(axis.x * scale, axis.y * scale, axis.z * scale);
+                        // // a2.Set(a2.x * scale, a2.y * scale, a2.z * scale);
+                        // var a3 = new Vector3(0,1,0);
+                        // a3.Set(a3.x * scale, a3.y * scale, a3.z * scale);
+                        // // joint.anchor = a3;
+                        // var a4 = parentGeom.Geom.transform.up;
+                        // a4.Set(a4.x * scale, -a4.y * scale, a4.z * scale);
+                        // joint.anchor = a4;                        
+                        // break;  
+                        
+                        // var jointPos = childGeom.Geom.transform.position;
+                        var jointPos = body.transform.position;
+                        //jointPos -= (childGeom.Lenght3D / 2.0f);
+                        jointPos -= parentGeom.Geom.transform.position;
+                        var offset = MujocoHelper.ParsePosition(attribute.Value);
+                        jointPos += offset;
+                        // joint.anchor = jointPos;
+                        // Vector3 rot = new Vector3(jointPos.x, -jointPos.z, -jointPos.y);
+                        var localAxis = parentGeom.Geom.transform.InverseTransformDirection(jointPos);
+
+                        Vector3 rot = new Vector3(jointPos.x, -jointPos.y, -jointPos.z);
+                        joint.anchor = localAxis;
+                        break;       
+
+                        //jointPos = new Vector3(jointPos.x, 0-jointPos.z, jointPos.y); 
+                        //jointPos = Quaternion.AngleAxis(-90, Vector3.right) * jointPos;
+                        // var axis = MujocoHelper.ParseVector3NoFlipYZ(classElement.Attribute("axis").Value);
+                        // axis = ConvertAxis(axis, joint, parentGeom, childGeom, body);
+                        
+                        // var a1 = Quaternion.AngleAxis(0, childGeom.Geom.transform.up) * jointPos;
+                        // var a2 = Quaternion.AngleAxis(90, childGeom.Geom.transform.up) * jointPos;
+                        // var a3 = Quaternion.AngleAxis(180, childGeom.Geom.transform.up) * jointPos;
+                        // var a4 = Quaternion.AngleAxis(-90, childGeom.Geom.transform.up) * jointPos;
+                        // var z1 = Quaternion.AngleAxis(0, axis) * jointPos;
+                        // var z2 = Quaternion.AngleAxis(90, axis) * jointPos;
+                        // var z3 = Quaternion.AngleAxis(180, axis) * jointPos;
+                        // var z4 = Quaternion.AngleAxis(270, axis) * jointPos;
+                        // var z5 = Quaternion.AngleAxis(0, childGeom.Geom.transform.up + parentGeom.Geom.transform.up) * jointPos;
+                        // var z6 = Quaternion.AngleAxis(-90, axis) * jointPos;
+                        // var z7 = Quaternion.AngleAxis(-180, axis) * jointPos;
+                        // var z8 = Quaternion.AngleAxis(-270, axis) * jointPos;
+                        // var z9 = Quaternion.AngleAxis(-45, axis) * jointPos;
+                        // var x1 = childGeom.Geom.transform.up + jointPos;
+                        // var x2 = parentGeom.Geom.transform.up + jointPos;
+
+
+                        if (back < 1f)
+                            jointPos = new Vector3(jointPos.x, -jointPos.z, jointPos.y);
+                        else if (down < 1f)
+                            jointPos = new Vector3(jointPos.x, -jointPos.y, jointPos.z);
+                        joint.anchor = jointPos;
+
+                        // var childPos = childGeom.Geom.transform.position;
+                        // var childOffset = childGeom.Lenght3D / 2f;
+                        // childOffset -= new Vector3(childGeom.Size.Value / 2f, childGeom.Size.Value / 2f,childGeom.Size.Value / 2f);
+                        // childPos -= childOffset;
+                        // childPos = childPos - parentGeom.Geom.transform.position;
+                        // childPos += jointPos;
+                        // joint.anchor = childPos;
+                        break;
+
+                        if (_useWorldSpace)
+                            jointPos = MujocoHelper.ParsePosition(attribute.Value);
+                        else {
+                            jointPos = MujocoHelper.ParsePosition(attribute.Value) + body.transform.position;
+                        }
+                        // set anchor
+                        if (parentGeom.Lenght3D != null){
+                            var startDistance = Vector3.Distance(parentGeom.Start, jointPos);
+                            var endDistance = Vector3.Distance(parentGeom.End, jointPos);
+                            if (startDistance < endDistance){
+                                var a = jointPos - childGeom.Geom.transform.position;
+                                var b1 = childGeom.Geom.transform.position - parentGeom.Geom.transform.position + jointPos;
+                                var b2 = b1 - (childGeom.Lenght3D / 2);
+                                var c1 = parentGeom.Geom.transform.position - childGeom.Geom.transform.position + jointPos;
+                                var c2 = c1 - (childGeom.Lenght3D / 2);
+                                // var b = parentGeom.Geom.transform.position - childGeom.Geom.transform.position + jointPos;
+                                var c = MujocoHelper.ParsePosition("0 -0.1 -0.04");//new Vector3(0f, -0.1f, -0.04f);
+                                // var d = Quaternion.AngleAxis(0, new Vector3(1f, 0f, 0f)) * c;
+                                var d = Quaternion.AngleAxis(90, Vector3.right) * c;
+                                //joint.anchor = Vector3.zero-c;
+                                joint.anchor = Vector3.zero-d;
+                                //joint.anchor = parentGeom.Lenght3D / 2;
+                            } else {
+                                var a = jointPos - childGeom.Geom.transform.position;
+                                var b = childGeom.Geom.transform.position - parentGeom.Geom.transform.position + jointPos;
+                                // var b = parentGeom.Geom.transform.position - childGeom.Geom.transform.position + jointPos;
+                                joint.anchor = b;
+                                // joint.anchor = Vector3.zero-parentGeom.Lenght3D / 2;
+                            }
+                        }
+                        // joint.autoConfigureConnectedAnchor = false;
+                        // if (childGeom.Lenght3D != null){
+                        //     var startDistance = Vector3.Distance(childGeom.Start, pos);
+                        //     var endDistance = Vector3.Distance(childGeom.End, pos);
+                        //     if (startDistance < endDistance){
+                        //         joint.connectedAnchor = childGeom.Lenght3D / 2;
+                        //     } else {
+                        //         joint.connectedAnchor = Vector3.zero-childGeom.Lenght3D / 2;
+                        //     }
                         // }
                         break;
                     case "range":

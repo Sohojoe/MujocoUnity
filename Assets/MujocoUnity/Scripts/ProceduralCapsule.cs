@@ -24,7 +24,7 @@ public class ProceduralCapsule : MonoBehaviour
 	public float height = 2f;
 	public float radius = 0.5f;
 	
-	public int segments = 48;
+	public int segments = 24;
 	
 	
 	// void GenerateMesh() 
@@ -68,7 +68,8 @@ public class ProceduralCapsule : MonoBehaviour
 		int ind = 0;
 		
 		// Y-offset is half the height minus the diameter
-		float yOff = ( height - ( radius * 2f ) ) * 0.5f;
+		// float yOff = ( height - ( radius * 2f ) ) * 0.5f;
+		float yOff = ( height - ( radius ) ) * 0.5f;
 		if ( yOff < 0 )
 			yOff = 0;
 		

@@ -7,6 +7,8 @@ namespace MujocoUnity
     public static class MujocoHelper
     {
         static readonly bool MujocoFlipYZ = true;
+		static Quaternion _rotate = Quaternion.AngleAxis(180, Vector3.up);
+		static GameObject _dummyGo = new GameObject();
         static public void AddRigidBody(this GameObject onObj)
         {
             onObj.AddComponent<Rigidbody>();
@@ -25,6 +27,21 @@ namespace MujocoUnity
         //     rescale.z = end.z * rescale.z / size.z;
         //     onObj.transform.localScale = rescale;
         // }	  
+
+		static Vector3 RightToLeft(Vector3 rightHanded, bool hackFlipZ = false)
+		{
+			// _dummyGo.transform.eulerAngles = Vector3.zero;
+ 			// _dummyGo.transform.Rotate(-rightHanded.x, -rightHanded.y, rightHanded.z);{
+			// Flipping x axis instead.
+    		return new Vector3(-rightHanded.x, rightHanded.z, -rightHanded.y);
+		}
+		static Vector3 RightToLeftAxis(Vector3 rightHanded)
+		{
+			_dummyGo.transform.eulerAngles = Vector3.zero;
+ 			// _dummyGo.transform.Rotate(rightHanded.y, rightHanded.x, rightHanded.z);
+ 			_dummyGo.transform.Rotate(-rightHanded.x, rightHanded.y, -rightHanded.z);
+			return (_dummyGo.transform.eulerAngles);
+		}
     
     	static char[] _delimiterChars = { ' ', ',', ':', '\t' };
 
@@ -58,8 +75,8 @@ namespace MujocoUnity
 			float x = Evaluate(words[1]);
 			float y = Evaluate(words[2]);
 			float z = Evaluate(words[3]);
-			// var q = MujocoFlipYZ ? new Quaternion(0-x,z,y,w) : new Quaternion(x,y,z,w);
-			var q = MujocoFlipYZ ? new Quaternion(x,z,y,w) : new Quaternion(x,y,z,w);
+			var q = MujocoFlipYZ ? new Quaternion(-x,z,-y,w) : new Quaternion(x,y,z,w);
+			//var q = MujocoFlipYZ ? new Quaternion(x,z,y,w) : new Quaternion(x,y,z,w);
 			return q;
 		}		
 
@@ -69,14 +86,19 @@ namespace MujocoUnity
 			float x = Evaluate(words[0]);
 			float y = Evaluate(words[1]);
 			float z = Evaluate(words[2]);
-			Vector3 vec3;
-            if (MujocoFlipYZ)
-    			vec3 = new Vector3(x,z,y);
-			else
-				vec3 = new Vector3(x,y,z);
-			if (hackFlipZ)
-				vec3.z = 0-vec3.z;
-			return vec3;
+			Vector3 vec3 = new Vector3(x,y,z);
+			return RightToLeft(vec3);
+			// return vec3;
+			// vec3 = new Vector3(x,z,y);
+			// vec3 = _rotate * vec3;
+			// return vec3;
+            // if (MujocoFlipYZ)
+    		// 	vec3 = new Vector3(x,z,y);
+			// else
+			// 	vec3 = new Vector3(x,y,z);
+			// if (hackFlipZ)
+			// 	vec3.z = 0-vec3.z;
+			// return vec3;
 		}
 
 		static public Vector3 JointParsePosition(string str, bool hackFlipZ)
@@ -85,15 +107,19 @@ namespace MujocoUnity
 			float x = Evaluate(words[0]);
 			float y = Evaluate(words[1]);
 			float z = Evaluate(words[2]);
-			Vector3 vec3;
-            if (MujocoFlipYZ)
-    			vec3 = new Vector3(x,z,y);
-			else
-				vec3 = new Vector3(x,y,z);
-			if (hackFlipZ)
-				vec3.z = 0-vec3.z;
-			// vec3.y = 0-vec3.y;
-			return vec3;
+			Vector3 vec3 = new Vector3(x,y,z);
+			return RightToLeft(vec3, hackFlipZ);
+			// vec3 = new Vector3(x,z,y);
+			// vec3 = _rotate * vec3;
+			// return vec3;
+            // if (MujocoFlipYZ)
+    		// 	vec3 = new Vector3(x,z,y);
+			// else
+			// 	vec3 = new Vector3(x,y,z);
+			// if (hackFlipZ)
+			// 	vec3.z = 0-vec3.z;
+			// //vec3.y = 0-vec3.y;
+			// return vec3;
 		}
 		
 		static public Vector3 ParsePosition(string str)
@@ -102,12 +128,16 @@ namespace MujocoUnity
 			float x = Evaluate(words[0]);
 			float y = Evaluate(words[1]);
 			float z = Evaluate(words[2]);
-			var vec3 = new Vector3(x,y,z);
-            if (MujocoFlipYZ) {
-    			// vec3 = new Vector3(0-x,z,y);
-    			vec3 = new Vector3(x,z,y);
-            }
-			return vec3;
+			Vector3 vec3 = new Vector3(x,y,z);
+			return RightToLeft(vec3);
+			// vec3 = new Vector3(x,z,y);
+			// vec3 = _rotate * vec3;
+			// return vec3;
+            // if (MujocoFlipYZ) {
+    		// 	vec3 = new Vector3(x,z,y);
+            // }
+			// //vec3.y = 0-vec3.y;
+			// return vec3;
 		}
 		static public Vector3 ParseFrom(string fromTo)
 		{
@@ -119,12 +149,16 @@ namespace MujocoUnity
 			float x = Evaluate(words[3]);
 			float y = Evaluate(words[4]);
 			float z = Evaluate(words[5]);
-			var vec3 = new Vector3(x,y,z);
-            if (MujocoFlipYZ) {
-    			// vec3 = new Vector3(0-x,z,y);
-    			vec3 = new Vector3(x,z,y);
-            }            
-			return vec3;
+			Vector3 vec3 = new Vector3(x,y,z);
+			return RightToLeft(vec3);
+			// vec3 = new Vector3(x,z,y);
+			// vec3 = _rotate * vec3;
+			// return vec3;
+            // if (MujocoFlipYZ) {
+    		// 	// vec3 = new Vector3(0-x,z,y);
+    		// 	vec3 = new Vector3(x,z,y);
+            // }            
+			// return vec3;
 		}
 
 		static public Vector2 ParseVector2(string str)
@@ -152,23 +186,6 @@ namespace MujocoUnity
 
 		static public GameObject CreateBetweenPoints(this GameObject parent, Vector3 start, Vector3 end, float width, bool useWorldSpace)
 		{
-
-            // parent.AddComponent<MeshFilter>();
-            // parent.AddComponent<CapsuleCollider>();
-            // parent.GetComponent<CapsuleCollider>().height = 2f;
-            // parent.AddComponent<MeshRenderer>();
-            // parent.GetComponent<MeshFilter>().mesh = PrimitiveHelper.GetPrimitiveMesh(PrimitiveType.Capsule);
-            // var meshRenderer = parent.GetComponent <MeshRenderer>();
-            // meshRenderer.materials[0] = PrimitiveHelper.GetDefaultMaterial();
-
-			// var offset = end - start;
-			// var scale = new Vector3(width, offset.magnitude / 2.0f, width);
-			// var position = start + (offset / 2.0f);
-			// parent.transform.up = offset;
-			// parent.transform.localScale = scale;
-            // parent.transform.localPosition = parent.transform.localPosition+position;
-			// return parent;
-
 			var offset = end - start;
 			//var scale = new Vector3(width*2, offset.magnitude / 2.0f, width*2);
 			var position = start + (offset / 2.0f);
