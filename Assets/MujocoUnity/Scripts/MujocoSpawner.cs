@@ -20,7 +20,9 @@ namespace MujocoUnity
         public string[] ListOf2dScripts = new string[] {"half_cheetah", "hopper", "walker2d"};
         public string[] HackFlipZList = new string[] {"humanoid", "humanoidstandup", "hopper", "walker2d"};
 
-        public float GlobalDamping = 0;
+        public bool UseMotorNotSpring;
+        public float GlobalDamping = 30;
+        public float BaseForce = 300;
 		
 		XElement _root;
 		XElement _defaultJoint;
@@ -129,7 +131,7 @@ namespace MujocoUnity
                 {
                     item.gameObject.layer = layer;
                 }
-            foreach (var item in GetComponentsInChildren<Joint>())
+            foreach (var item in GetComponentsInChildren<Joint>()) 
                 item.enablePreprocessing = false;
             if (ListOf2dScripts.FirstOrDefault(x=>x == this.name) != null)
                 foreach (var item in GetComponentsInChildren<Rigidbody>())
@@ -746,7 +748,7 @@ namespace MujocoUnity
         {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
-            // JointSpring spring = hingeJoint?.spring ?? new JointSpring();
+            JointSpring spring = hingeJoint?.spring ?? new JointSpring();
             JointMotor motor = hingeJoint?.motor ?? new JointMotor();
             JointLimits limits = hingeJoint?.limits ?? new JointLimits();
             foreach (var attribute in classElement.Attributes())
@@ -757,7 +759,7 @@ namespace MujocoUnity
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "damping":
-                        //spring.damper = GlobalDamping;// + float.Parse(attribute.Value);
+                        spring.damper = GlobalDamping;// + float.Parse(attribute.Value);
                         break;
                     case "limited":
 						if (hingeJoint != null)
@@ -821,7 +823,7 @@ namespace MujocoUnity
                 }
             }
             if(hingeJoint != null) {
-                // hingeJoint.spring = spring;                
+                hingeJoint.spring = spring;                
                 hingeJoint.motor = motor;                
                 hingeJoint.limits = limits;
             }
@@ -863,12 +865,12 @@ namespace MujocoUnity
             foreach (Joint joint in matches)
             {
                 HingeJoint hingeJoint = joint as HingeJoint;
-                // JointSpring spring = new JointSpring(); 
+                JointSpring spring = new JointSpring(); 
                 JointMotor motor = new JointMotor(); 
                 if (hingeJoint != null) {
-                    // hingeJoint.useSpring = true;
-                    // spring = hingeJoint.spring;
-                    hingeJoint.useMotor = true;
+                    spring = hingeJoint.spring;
+                    hingeJoint.useSpring = !UseMotorNotSpring;                    
+                    hingeJoint.useMotor = UseMotorNotSpring;
                     motor = hingeJoint.motor;
                     motor.freeSpin = true;
                 }
@@ -889,7 +891,7 @@ namespace MujocoUnity
         {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
-            // JointSpring spring = hingeJoint?.spring ?? new JointSpring();
+            JointSpring spring = hingeJoint?.spring ?? new JointSpring();
             JointMotor motor = hingeJoint?.motor ?? new JointMotor();
             JointLimits limits = hingeJoint?.limits ?? new JointLimits();
             foreach (var attribute in classElement.Attributes())
@@ -910,8 +912,8 @@ namespace MujocoUnity
                         var gear = float.Parse(attribute.Value);
                         //var gear = 200;
                         mujocoJoint.Gear = gear;
-                        // spring.spring = gear;
-                        motor.force = gear;
+                        spring.spring = gear + BaseForce;
+                        motor.force = gear + BaseForce;
                         break;
                     case "name":
                         var objName = attribute.Value;
@@ -924,7 +926,7 @@ namespace MujocoUnity
                 }
             }
             if(hingeJoint != null) {
-                // hingeJoint.spring = spring;                
+                hingeJoint.spring = spring;                
                 hingeJoint.motor = motor;                
                 hingeJoint.limits = limits;
             }
