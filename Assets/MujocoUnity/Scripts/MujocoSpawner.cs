@@ -234,6 +234,12 @@ namespace MujocoUnity
             public Vector3 Lenght3D;
             public Vector3 Start;
             public Vector3 End;
+            public List<GameObject> Bones;
+            
+            public GeomItem()
+            {
+                Bones = new List<GameObject>();
+            }
         }
 		List<KeyValuePair<string, Joint>> ParseBody(XElement xdoc, GameObject parentBody, GeomItem geom = null, GeomItem parentGeom = null, List<JointDocQueueItem> jointDocsQueue = null)
         {
@@ -263,7 +269,7 @@ namespace MujocoUnity
                             var fixedJoint = parentGeom.Geom.AddComponent<FixedJoint>();
                             fixedJoint.connectedBody = geom.Geom.GetComponent<Rigidbody>();                            
                         }
-                        jointDocsQueue = new List<JointDocQueueItem>();
+                        jointDocsQueue.Clear();
                         parentGeom = geom;
                         break;
                     case "joint":
@@ -646,7 +652,8 @@ namespace MujocoUnity
 		{
 			var joints = new List<KeyValuePair<string, Joint>>();
 
-            // var element = xdoc.Element("joint");
+            GameObject bone = null;
+            
             var element = xdoc;
             if (element == null)
                 return joints;
@@ -657,42 +664,85 @@ namespace MujocoUnity
 				return joints;
 			}
             Joint joint = null;
+            Type jointType;
 			string jointName = element.Attribute("name")?.Value;
 			switch (type)
 			{
 				case "hinge":
 					DebugPrint($"ParseJoint: Creating type:{type} ");
-					joint = parentGeom.Geom.gameObject.AddComponent<HingeJoint> ();
-                    if (childGeom != null)
-                        joint.connectedBody = childGeom.Geom.GetComponent<Rigidbody>();
+                    jointType = typeof(HingeJoint);
 					break;
 				case "free":
 					DebugPrint($"ParseJoint: Creating type:{type} ");
-					joint = parentGeom.Geom.gameObject.AddComponent<FixedJoint> ();
-                    if (childGeom != null)
-                        joint.connectedBody = childGeom.Geom.GetComponent<Rigidbody>();
+                    jointType = typeof(FixedJoint);
 					break;
 				default:
 					DebugPrint($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
 					return joints;
 			}
+            bone = new GameObject();
+            bone.transform.SetPositionAndRotation(parentGeom.Geom.transform.position, parentGeom.Geom.transform.rotation);
+            bone.transform.localScale = parentGeom.Geom.transform.localScale;
+            bone.transform.parent = parentGeom.Geom.transform;
+            var boneRidgedBody = bone.AddComponent<Rigidbody>();
+            joint = bone.AddComponent(jointType) as Joint;
+            var existingBone = parentGeom.Bones
+                .Where(x=>x.GetComponent<Joint>().connectedBody == childGeom.Geom.GetComponent<Rigidbody>())
+                .FirstOrDefault();
+            if (existingBone) {
+                existingBone.GetComponent<Joint>().connectedBody = boneRidgedBody;
+            } else {
+                var parentJoint = parentGeom.Geom.AddComponent<FixedJoint>();
+                parentJoint.connectedBody = boneRidgedBody;
+            }
+            parentGeom.Bones.Add(bone);
+
+            var boneCollider = CopyCollider(bone, parentGeom.Geom);
+            joint.connectedBody = childGeom.Geom.GetComponent<Rigidbody>();
+
+            if (childGeom != null)
+                joint.connectedBody = childGeom.Geom.GetComponent<Rigidbody>();
 			
             if(_defaultJoint != null)
-                ApplyClassToJoint(_defaultJoint, joint, parentGeom, childGeom, body);
-            ApplyClassToJoint(element, joint, parentGeom, childGeom, body);
+                ApplyClassToJoint(_defaultJoint, joint, parentGeom, body, bone);
+            ApplyClassToJoint(element, joint, parentGeom, body, bone);
+
+            Destroy(boneCollider);
             
             if (joint != null)
                 joints.Add(new KeyValuePair<string,Joint>(jointName, joint));	
 			return joints;
 		}
 
-        Vector3 ConvertAxis(Vector3 inAxis, Joint joint, GeomItem parentGeom, GeomItem childGeom, GameObject body)
+        Collider CopyCollider(GameObject target, GameObject source)
         {
-            Vector3 axis = new Vector3(-inAxis.x, inAxis.z, -inAxis.y);
-            var localAxis = parentGeom.Geom.transform.InverseTransformDirection(axis);
-            return localAxis;
+            var sourceCollider = source.GetComponent<Collider>();
+            var sourceCapsule = sourceCollider as CapsuleCollider;
+            var sphereCollider = sourceCollider as SphereCollider;
+            Collider targetCollider = null;
+            if (sourceCapsule != null) {
+                var targetCapsule = target.AddComponent<CapsuleCollider>();
+                targetCollider = targetCapsule as Collider;
+                targetCapsule.center = sourceCapsule.center;
+                targetCapsule.radius = sourceCapsule.radius;
+                targetCapsule.height = sourceCapsule.height;
+                targetCapsule.direction = sourceCapsule.direction;
+            } else if (sphereCollider != null) {
+                var targetSphere = target.AddComponent<SphereCollider>();
+                targetCollider = targetSphere as Collider;
+                targetSphere.center = sphereCollider.center;
+                targetSphere.radius = sphereCollider.radius;
+            } else 
+                throw new NotImplementedException();
+            if (sourceCollider != null){
+                targetCollider.isTrigger = sourceCollider.isTrigger;
+                targetCollider.material = sourceCollider.material;
+            }
+            return targetCollider;
         }
-        void ApplyClassToJoint(XElement classElement, Joint joint, GeomItem parentGeom, GeomItem childGeom, GameObject body)
+
+        
+        void ApplyClassToJoint(XElement classElement, Joint joint, GeomItem parentGeom, GameObject body, GameObject bone)
         {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
@@ -714,24 +764,33 @@ namespace MujocoUnity
                             hingeJoint.useLimits = bool.Parse(attribute.Value);
                         break;
                     case "axis":
-                        var axRot = ConvertAxis(MujocoHelper.ParseVector3NoFlipYZ(attribute.Value),joint,parentGeom, childGeom, body);
-                        joint.axis = axRot;
+                        var inAxis = MujocoHelper.ParseVector3NoFlipYZ(attribute.Value);
+                        Vector3 axis = new Vector3(-inAxis.x, inAxis.z, -inAxis.y);
+                        axis = parentGeom.Geom.transform.InverseTransformDirection(axis);
+                        joint.axis = axis;
 						//joint.axis = MujocoHelper.ParseAxis(attribute.Value, _hackFlipZ);
                         break;
                     case "name":
-                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        if (bone != null)
+                            bone.name = attribute.Value;
                         break;
                     case "pos":
                         Vector3 jointOffset = MujocoHelper.ParsePosition(attribute.Value);
-                        if (!parentGeom.Lenght.HasValue){
-                            return;
+                        // if (!parentGeom.Lenght.HasValue){
+                        //     return;
+                        // }
+                        if (_useWorldSpace){
+                            var jointPos = MujocoHelper.ParsePosition(attribute.Value);
+                            var localAxis = bone.transform.TransformPoint(jointPos);
+                            joint.anchor = localAxis;
+                        } else {
+                            var jointPos = body.transform.position;
+                            jointPos -= bone.transform.position;
+                            var offset = MujocoHelper.ParsePosition(attribute.Value);
+                            jointPos += offset;
+                            var localAxis = bone.transform.InverseTransformDirection(jointPos);
+                            joint.anchor = localAxis;
                         }
-                        var jointPos = body.transform.position;
-                        jointPos -= parentGeom.Geom.transform.position;
-                        var offset = MujocoHelper.ParsePosition(attribute.Value);
-                        jointPos += offset;
-                        var localAxis = parentGeom.Geom.transform.InverseTransformDirection(jointPos);
-                        joint.anchor = localAxis;
                         break;       
 
                     case "range":
