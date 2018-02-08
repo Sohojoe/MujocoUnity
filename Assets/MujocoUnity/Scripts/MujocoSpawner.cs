@@ -18,7 +18,6 @@ namespace MujocoUnity
         public bool DebugOutput;
         public bool GravityOff;
         public string[] ListOf2dScripts = new string[] {"half_cheetah", "hopper", "walker2d"};
-        public string[] HackFlipZList = new string[] {"humanoid", "humanoidstandup", "hopper", "walker2d"};
 
         public bool UseMotorNotSpring;
         public float GlobalDamping = 30;
@@ -31,7 +30,6 @@ namespace MujocoUnity
 
         bool _hasParsed;
         bool _useWorldSpace;
-        bool _hackFlipZ;
         Quaternion _orginalTransformRotation;
         Vector3 _orginalTransformPosition;
         public void SpawnFromXml()
@@ -91,9 +89,6 @@ namespace MujocoUnity
                 }
                 // result = result.Append(ParseBody(element, element.Attribute("name")?.Value));
             }
-
-            // HACK - need to flip axisZ on some models (not sure why???)
-            _hackFlipZ = HackFlipZList.FirstOrDefault(x=>x == this.gameObject.name) != null;
 
 
             //ParseBody(element.Element("default"), "default", this.gameObject);
@@ -770,7 +765,6 @@ namespace MujocoUnity
                         Vector3 axis = new Vector3(-inAxis.x, inAxis.z, -inAxis.y);
                         axis = parentGeom.Geom.transform.InverseTransformDirection(axis);
                         joint.axis = axis;
-						//joint.axis = MujocoHelper.ParseAxis(attribute.Value, _hackFlipZ);
                         break;
                     case "name":
                         if (bone != null)
