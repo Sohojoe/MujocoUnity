@@ -390,7 +390,17 @@ Prefab:
     - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
         type: 2}
       propertyPath: BaseForce
-      value: 300
+      value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: ForceMultiple
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: Mass
+      value: 0.01
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 41661c22107be4a20af7212d6eb0d729, type: 2}

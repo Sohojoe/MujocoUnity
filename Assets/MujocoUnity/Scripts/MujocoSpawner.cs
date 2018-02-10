@@ -21,7 +21,9 @@ namespace MujocoUnity
 
         public bool UseMotorNotSpring;
         public float GlobalDamping = 30;
-        public float BaseForce = 300;
+        public float BaseForce = 300f;
+        public float ForceMultiple = 1;
+        public float Mass = 1f;
 		
 		XElement _root;
 		XElement _defaultJoint;
@@ -141,9 +143,9 @@ namespace MujocoUnity
                 if (GravityOff)
                     item.useGravity = false;
             //     //item.mass = item.mass * 0f;
-                item.mass = 10f;
-                item.drag = 0f;
-                item.angularDrag = 0f;
+                item.mass = 1f;
+                //item.drag = 0f;
+                //item.angularDrag = 0.05f;
             }
             // foreach (var item in GetComponentsInChildren<HingeJoint>()) {
             //     item.connectedMassScale = 1;  
@@ -521,8 +523,9 @@ namespace MujocoUnity
                         // Material density used to compute the geom mass and inertia. The computation is based on the
                         // geom shape and the assumption of uniform density. The internal default of 1000 is the density
                         // of water in SI units. This attribute is used only when the mass attribute above is unspecified.
-                        var density = float.Parse(attribute.Value) / 1000f;
-                        geom.GetComponent<Rigidbody>().mass = density;
+                        //var density = float.Parse(attribute.Value) / 1000f;
+                        //geom.GetComponent<Rigidbody>().mass = density;
+                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "solmix": // "1"
                         // This attribute specifies the weight used for averaging of constraint solver parameters.
@@ -906,6 +909,7 @@ namespace MujocoUnity
                         var gear = float.Parse(attribute.Value);
                         //var gear = 200;
                         mujocoJoint.Gear = gear;
+                        gear *= ForceMultiple;
                         spring.spring = gear + BaseForce;
                         motor.force = gear + BaseForce;
                         break;
