@@ -78,9 +78,11 @@ MonoBehaviour:
   DebugOutput: 0
   GravityOff: 0
   ListOf2dScripts:
-  - _half_cheetah
-  - _hopper
-  - _walker2d
+  - half_cheetah
+  - hopper
+  - walker2d
   UseMotorNotSpring: 0
   GlobalDamping: 30
   BaseForce: 50
+  ForceMultiple: 1
+  Mass: 1

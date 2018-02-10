@@ -133,7 +133,7 @@ namespace MujocoUnity
             if (ListOf2dScripts.FirstOrDefault(x=>x == this.name) != null)
                 foreach (var item in GetComponentsInChildren<Rigidbody>())
                 {
-                    item.constraints = item.constraints | RigidbodyConstraints.FreezeRotationY;
+                    item.constraints = item.constraints | RigidbodyConstraints.FreezePositionZ;
                 }
 
             // // debug helpers
