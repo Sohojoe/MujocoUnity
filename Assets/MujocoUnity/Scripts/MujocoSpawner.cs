@@ -246,13 +246,72 @@ namespace MujocoUnity
             jointDocsQueue = jointDocsQueue ?? new List<JointDocQueueItem>(); 
             var bodies = new List<GameObject>();
 
+            foreach (var element in xdoc.Elements("light"))
+            {
+            }
+            foreach (var element in xdoc.Elements("camera"))
+            {
+            }
+            foreach (var element in xdoc.Elements("joint"))
+            {
+                jointDocsQueue.Add(new JointDocQueueItem {
+                        JointXDoc = element,
+                        ParentGeom = geom,
+                        ParentBody = parentBody,
+                    });
+            }            
+            foreach (var element in xdoc.Elements("geom"))
+            {
+                geom = ParseGeom(element, parentBody);
+
+                if(parentGeom != null && jointDocsQueue?.Count > 0){
+                    foreach (var jointDocQueueItem in jointDocsQueue)
+                    {
+                        var js = ParseJoint(
+                            jointDocQueueItem.JointXDoc, 
+                            jointDocQueueItem.ParentGeom, 
+                            geom, 
+                            jointDocQueueItem.ParentBody);
+                        if(js != null) joints.AddRange(js);
+                    }
+                }
+                else if (parentGeom != null){
+                    var fixedJoint = parentGeom.Geom.AddComponent<FixedJoint>();
+                    fixedJoint.connectedBody = geom.Geom.GetComponent<Rigidbody>();                            
+                }
+                jointDocsQueue.Clear();
+                parentGeom = geom;
+            }
+
+            foreach (var element in xdoc.Elements("body"))
+            {
+                var body = new GameObject();
+                bodies.Add(body);
+                body.transform.parent = this.transform;
+                ApplyClassToBody(element, body, parentBody);
+                // var newJoints = ParseBody(element, element.Attribute("name")?.Value, body, geom, parentGeom, xdoc, jointDocsQueue);
+                var newJoints = ParseBody(element, body, geom, parentGeom, jointDocsQueue);
+                if (newJoints != null) joints.AddRange(newJoints);
+            }
+
+            foreach (var item in bodies)
+                GameObject.Destroy(item);
+            
+            return joints;            
+        }
+
+        List<KeyValuePair<string, Joint>> ToDeleteOldParseBody(XElement xdoc, GameObject parentBody, GeomItem geom = null, GeomItem parentGeom = null, List<JointDocQueueItem> jointDocsQueue = null)
+        {
+            var joints = new List<KeyValuePair<string, Joint>>();
+            jointDocsQueue = jointDocsQueue ?? new List<JointDocQueueItem>(); 
+            var bodies = new List<GameObject>();
+
             foreach (var element in xdoc.Elements())
             {
                 switch (element.Name.LocalName)
                 {
                     case "geom":
                         geom = ParseGeom(element, parentBody);
-
                         if(parentGeom != null && jointDocsQueue?.Count > 0){
                             foreach (var jointDocQueueItem in jointDocsQueue)
                             {

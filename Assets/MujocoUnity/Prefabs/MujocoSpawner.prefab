@@ -70,7 +70,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   MujocoXml: {fileID: 0}
   Material: {fileID: 2100000, guid: 9013613e105254620b29c7301046af30, type: 2}
-  PhysicMaterial: {fileID: 13400000, guid: b9c123ed1464e44adbfe0f4b3a874890, type: 2}
+  PhysicMaterial: {fileID: 13400000, guid: 38b7ea504254a4fa986e42a7bb16c8df, type: 2}
   CollisionLayer:
     serializedVersion: 2
     m_Bits: 1024
@@ -82,7 +82,7 @@ MonoBehaviour:
   - hopper
   - walker2d
   UseMotorNotSpring: 0
-  GlobalDamping: 30
-  BaseForce: 50
+  GlobalDamping: 10
+  BaseForce: 0
   ForceMultiple: 1
   Mass: 1
