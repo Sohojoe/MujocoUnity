@@ -68,17 +68,22 @@ namespace MujocoUnity
                 return;
             if (hingeJoint.useSpring)
             {
-	            var inputScale = mJoint.CtrlRange.y - mJoint.CtrlRange.x;
+                // HACK - make joint input range -1 to 1
+                // var ctrlRangeMin = mJoint.CtrlRange.x;
+                // var ctrlRangeMax = mJoint.CtrlRange.x;
+                var ctrlRangeMin = -1f;
+                var ctrlRangeMax = 1f;
+	            var inputScale = ctrlRangeMax - ctrlRangeMin;
                 if (!target.HasValue) // handle random
-                    target = Random.value * inputScale + mJoint.CtrlRange.x;
-
+                    target = ctrlRangeMin + (Random.value * inputScale);
+    
                 JointSpring js;
                 js = hingeJoint.spring;
-                var inputTarget = Mathf.Clamp(target.Value, mJoint.CtrlRange.x, mJoint.CtrlRange.y);
-                if (mJoint.CtrlRange.x < 0)
-                    inputTarget = Mathf.Abs(mJoint.CtrlRange.x) + inputTarget;
+                var inputTarget = Mathf.Clamp(target.Value, ctrlRangeMin, ctrlRangeMax);
+                if (ctrlRangeMin < 0)
+                    inputTarget = Mathf.Abs(ctrlRangeMin) + inputTarget;
                 else
-                    inputTarget = inputTarget - Mathf.Abs(mJoint.CtrlRange.x);
+                    inputTarget = inputTarget - Mathf.Abs(ctrlRangeMin);
                 inputTarget /= inputScale;
                 var min = hingeJoint.limits.min;
                 var max = hingeJoint.limits.max;
