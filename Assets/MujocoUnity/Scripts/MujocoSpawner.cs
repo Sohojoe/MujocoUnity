@@ -143,7 +143,7 @@ namespace MujocoUnity
                 if (GravityOff)
                     item.useGravity = false;
             //     //item.mass = item.mass * 0f;
-                item.mass = 1f;
+                // item.mass = 1f;
                 //item.drag = 0f;
                 //item.angularDrag = 0.05f;
             }
@@ -454,6 +454,7 @@ namespace MujocoUnity
 					return null;
 			}
 			geom.Geom.AddRigidBody();
+            geom.Geom.GetComponent<Rigidbody>().mass = this.Mass;
 
             if (_defaultGeom != null)
                 ApplyClassToGeom(_defaultGeom, geom.Geom, parent);
@@ -576,15 +577,16 @@ namespace MujocoUnity
                         // inerta are only used during compilation, to infer the body mass and inertia if necessary.
                         // At runtime only the body inertial properties affect the simulation;
                         // the geom mass and inertia are not even saved in mjModel.
-                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        geom.GetComponent<Rigidbody>().mass = float.Parse(attribute.Value);
                         break;
                     case "density": //  "1000"
                         // Material density used to compute the geom mass and inertia. The computation is based on the
                         // geom shape and the assumption of uniform density. The internal default of 1000 is the density
                         // of water in SI units. This attribute is used only when the mass attribute above is unspecified.
-                        //var density = float.Parse(attribute.Value) / 1000f;
-                        //geom.GetComponent<Rigidbody>().mass = density;
-                        DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
+                        var density = float.Parse(attribute.Value) / 1000f;
+                        geom.GetComponent<Rigidbody>().mass = density;
+                        // DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "solmix": // "1"
                         // This attribute specifies the weight used for averaging of constraint solver parameters.
