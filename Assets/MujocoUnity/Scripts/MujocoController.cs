@@ -61,7 +61,7 @@ namespace MujocoUnity
             }
         }
 
-		void ApplyAction(MujocoJoint mJoint, float? target = null)
+		static public void ApplyAction(MujocoJoint mJoint, float? target = null)
         {
             HingeJoint hingeJoint = mJoint.Joint as HingeJoint;
             if (hingeJoint == null)
@@ -71,7 +71,7 @@ namespace MujocoUnity
                 // HACK - make joint input range -1 to 1
                 // var ctrlRangeMin = mJoint.CtrlRange.x;
                 // var ctrlRangeMax = mJoint.CtrlRange.x;
-                var ctrlRangeMin = -1f;
+                var ctrlRangeMin = 0f;//-1f;
                 var ctrlRangeMax = 1f;
 	            var inputScale = ctrlRangeMax - ctrlRangeMin;
                 if (!target.HasValue) // handle random
@@ -97,8 +97,11 @@ namespace MujocoUnity
                 if (!target.HasValue) // handle random
                     target = Random.value * 2 - 1;
 
-                target = Mathf.Max(-1f, target.Value);
-                target = Mathf.Min(1f, target.Value);
+                // target = Mathf.Max(-1f, target.Value);
+                // target = Mathf.Min(1f, target.Value);
+                target = Mathf.Clamp(target.Value, 0f, 1f);
+                target *= 2;
+                target -= 1f;
 
                 JointMotor jm;
                 jm = hingeJoint.motor;
