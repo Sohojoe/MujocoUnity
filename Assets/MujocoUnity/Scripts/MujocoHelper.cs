@@ -56,7 +56,7 @@ namespace MujocoUnity
 			return q;
 		}		
 
-		static public Vector3 ParseAxis(string str, bool hackFlipZ)
+		static public Vector3 ParseAxis(string str)
 		{
 			string[] words = str.Split(_delimiterChars);
 			float x = Evaluate(words[0]);

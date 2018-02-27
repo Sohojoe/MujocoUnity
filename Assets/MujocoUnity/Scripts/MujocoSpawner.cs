@@ -182,6 +182,9 @@ namespace MujocoUnity
                             else
                                 print($"--*** IGNORING timestep=\"{attribute.Value}\" as UseMujocoTimestep == false");
                             break;
+                        case "gravity":
+                            Physics.gravity = MujocoHelper.ParseAxis(attribute.Value);
+                            break;
                         default:
                             DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
                             throw new NotImplementedException(attribute.Name.LocalName);
