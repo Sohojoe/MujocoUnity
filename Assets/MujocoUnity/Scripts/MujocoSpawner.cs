@@ -144,8 +144,8 @@ namespace MujocoUnity
                     item.useGravity = false;
             //     //item.mass = item.mass * 0f;
                 // item.mass = 1f;
-                //item.drag = 0f;
-                //item.angularDrag = 0.05f;
+                // item.drag = 0.5f;
+                // item.angularDrag = 3f;
             }
             // foreach (var item in GetComponentsInChildren<HingeJoint>()) {
             //     item.connectedMassScale = 1;  
@@ -180,7 +180,7 @@ namespace MujocoUnity
                             if (UseMujocoTimestep)
                                 Time.fixedDeltaTime = float.Parse(attribute.Value);
                             else
-                                print($"--*** IGNORING timestep=\"{attribute.Value}\" as UseMujocoTimestep == false");
+                                DebugPrint($"--*** IGNORING timestep=\"{attribute.Value}\" as UseMujocoTimestep == false");
                             break;
                         case "gravity":
                             Physics.gravity = MujocoHelper.ParseAxis(attribute.Value);
@@ -415,14 +415,14 @@ namespace MujocoUnity
 				return geom;
 			}
 			float size;
-            print($"ParseGeom: Creating type:{type} name:{element.Attribute("name")?.Value}");
+            DebugPrint($"ParseGeom: Creating type:{type} name:{element.Attribute("name")?.Value}");
             if(element.Attribute("name")?.Value == "left_shin1"){
-                print("***---***");
-                print(element);
+                DebugPrint("***---***");
+                DebugPrint(element.ToString());
             }
             if(element.Attribute("name")?.Value == "right_foot_cap1"){
-                print("***---***");
-                print(element);
+                DebugPrint("***---***");
+                DebugPrint(element.ToString());
             }
             geom = new GeomItem();
 			switch (type)
@@ -821,7 +821,8 @@ namespace MujocoUnity
                         DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                         break;
                     case "damping":
-                        spring.damper = GlobalDamping;// + float.Parse(attribute.Value);
+                        //spring.damper = GlobalDamping;// + float.Parse(attribute.Value);
+                        spring.damper = float.Parse(attribute.Value);
                         break;
                     case "limited":
 						if (hingeJoint != null)
