@@ -69,13 +69,18 @@ namespace MujocoUnity
         }
         void UpdateQ()
         {
-            // if (qpos == null || qval == null)
-            //     return;
+            float lastQ;
             var topJoint = MujocoJoints[0];
             var topTransform = topJoint.Joint.transform.parent.transform;
+            lastQ = qpos[0];
             qpos[0] = topTransform.position.x;
+            qvel[0] = qpos[0]-lastQ;
+            lastQ = qpos[1];
             qpos[1] = topTransform.position.y;
+            qvel[1] = qpos[1]-lastQ;
+            lastQ = qpos[2];
             qpos[2] = topTransform.rotation.eulerAngles.z * Mathf.Deg2Rad;
+            qvel[2] = qpos[2]-lastQ;
             for (int i = 0; i < MujocoJoints.Length; i++)
             {
                 var hingeJoint = MujocoJoints[i].Joint as HingeJoint;
