@@ -24,6 +24,7 @@ namespace MujocoUnity
         public float BaseForce = 300f;
         public float ForceMultiple = 1;
         public float Mass = 1f;
+        public float OnGenerateApplyRandom = 0.005f;
 		
 		XElement _root;
 		XElement _defaultJoint;
@@ -158,6 +159,14 @@ namespace MujocoUnity
             // restore positions and orientation
             this.gameObject.transform.rotation = _orginalTransformRotation;
             this.gameObject.transform.position = _orginalTransformPosition;
+
+            if (OnGenerateApplyRandom != 0f){
+                foreach (var item in mujocoJoints) {
+                    var r = (UnityEngine.Random.value * OnGenerateApplyRandom*2)-OnGenerateApplyRandom;
+                    MujocoController.ApplyAction(item, r);
+                }
+            }
+
         }
 
         void ParseCompilerOptions(XElement xdoc)
