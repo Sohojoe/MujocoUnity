@@ -15,6 +15,9 @@ namespace MujocoUnity
         public bool applyTargets;
         public float[] targets;
 
+        public List<float> qpos;
+        public List<float> qvel;
+
 
         public void SetMujocoJoints(List<MujocoJoint> mujocoJoints)
         {
@@ -26,6 +29,9 @@ namespace MujocoUnity
                 if (smoothFollow != null) 
                     smoothFollow.target = target.transform;
             }
+            var qlen = MujocoJoints.Length + 3;
+            qpos = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
+            qvel = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
         }
         GameObject FindTopMesh(GameObject curNode, GameObject topmostNode = null)
         {
@@ -59,6 +65,34 @@ namespace MujocoUnity
                 else if (applyTargets)
                     ApplyAction(MujocoJoints[i], targets[i]);
             }
+            UpdateQ();
+        }
+        void UpdateQ()
+        {
+            // if (qpos == null || qval == null)
+            //     return;
+            var topJoint = MujocoJoints[0];
+            var topTransform = topJoint.Joint.transform.parent.transform;
+            qpos[0] = topTransform.position.x;
+            qpos[1] = topTransform.position.y;
+            qpos[2] = topTransform.rotation.eulerAngles.z * Mathf.Deg2Rad;
+            for (int i = 0; i < MujocoJoints.Length; i++)
+            {
+                var hingeJoint = MujocoJoints[i].Joint as HingeJoint;
+                var targ = hingeJoint.transform.parent.transform;
+                float pos = 0f;
+                if (hingeJoint.axis.x != 0f)
+                    pos = targ.rotation.eulerAngles.x;
+                else if (hingeJoint.axis.y != 0f)
+                    pos = targ.rotation.eulerAngles.y;
+                else if (hingeJoint.axis.z != 0f)
+                    pos = targ.rotation.eulerAngles.z;
+                if (hingeJoint){
+                    qpos[3+i] = pos * Mathf.Deg2Rad;
+                    qvel[3+i] = hingeJoint.velocity;
+                }
+            }
+            
         }
 
 		static public void ApplyAction(MujocoJoint mJoint, float? target = null)
