@@ -30,6 +30,7 @@ namespace MujocoUnity
 		XElement _defaultJoint;
 		XElement _defaultGeom;
 		XElement _defaultMotor;
+        XElement _defaultSensor;
 
         bool _hasParsed;
         bool _useWorldSpace;
@@ -78,6 +79,7 @@ namespace MujocoUnity
             _defaultJoint = _root.Element("default")?.Element("joint");
             _defaultGeom = _root.Element("default")?.Element("geom");
             _defaultMotor = _root.Element("default")?.Element("motor");
+            _defaultSensor = _root.Element("default")?.Element("sensor");
 
             foreach (var attribute in element.Attributes())
             {
@@ -111,8 +113,10 @@ namespace MujocoUnity
             // var joints = ParseBody(element.Element("worldbody"), "worldbody", this.gameObject, null);
             var joints = ParseBody(element.Element("worldbody"), this.gameObject);
             var mujocoJoints = ParseGears(element.Element("actuator"), joints);
+            var mujocoSensors = ParseSensors(element.Element("sensor"), GetComponentsInChildren<Collider>());
             
             GetComponent<MujocoController>().SetMujocoJoints(mujocoJoints);
+            GetComponent<MujocoController>().SetMujocoSensors(mujocoSensors);
             if (Material != null)
                 foreach (var item in GetComponentsInChildren<Renderer>())
                 {
@@ -916,8 +920,6 @@ namespace MujocoUnity
             return mujocoJoints;
         }
 
-
-
 		List<MujocoJoint> ParseGear(XElement element, List<KeyValuePair<string, Joint>>  joints)
         {
             var mujocoJoints = new List<MujocoJoint>();
@@ -1002,6 +1004,32 @@ namespace MujocoUnity
                 hingeJoint.motor = motor;                
                 hingeJoint.limits = limits;
             }
+        }
+
+        List<MujocoSensor> ParseSensors(XElement xdoc, IEnumerable<Collider> colliders)
+        {
+            var mujocoSensors = new List<MujocoSensor>();
+            var name = "touch";
+
+            var elements = xdoc?.Elements(name);
+            if (elements == null)
+                return mujocoSensors;
+            foreach (var element in elements)
+            {
+                var mujocoSensor = new MujocoSensor{
+                    Name = element.Attribute("name")?.Value,
+                    SiteName = element.Attribute("site")?.Value,
+                };
+                var match = colliders
+                    .Where(x=>x.name == mujocoSensor.SiteName)
+                    .FirstOrDefault();
+                if (match != null)
+                    mujocoSensor.SiteObject = match;
+                else
+                    throw new NotImplementedException();
+                mujocoSensors.Add(mujocoSensor);
+            }
+            return mujocoSensors;
         }
 	}
 }

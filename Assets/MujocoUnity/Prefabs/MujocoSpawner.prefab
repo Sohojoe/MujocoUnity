@@ -57,6 +57,8 @@ MonoBehaviour:
   applyRandomToAll: 0
   applyTargets: 0
   targets: []
+  qpos: []
+  qvel: []
 --- !u!114 &114930587501614892
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -81,8 +83,9 @@ MonoBehaviour:
   - half_cheetah
   - hopper
   - walker2d
-  UseMotorNotSpring: 0
+  UseMotorNotSpring: 1
   GlobalDamping: 10
   BaseForce: 0
   ForceMultiple: 1
   Mass: 1
+  OnGenerateApplyRandom: 0.005

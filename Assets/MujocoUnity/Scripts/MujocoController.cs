@@ -8,6 +8,7 @@ namespace MujocoUnity
     public class MujocoController : MonoBehaviour
     {
         public MujocoJoint[] MujocoJoints;
+        public List<MujocoSensor> MujocoSensors;
         
         public GameObject CameraTarget;
 
@@ -17,7 +18,19 @@ namespace MujocoUnity
 
         public List<float> qpos;
         public List<float> qvel;
+        public List<float> OnSensor;
+        public List<float> SensorIsInTouch;
 
+        public void SetMujocoSensors(List<MujocoSensor> mujocoSensors)
+        {
+            MujocoSensors = mujocoSensors;
+            OnSensor = Enumerable.Range(0,mujocoSensors.Count).Select(x=>0f).ToList();
+            SensorIsInTouch = Enumerable.Range(0,mujocoSensors.Count).Select(x=>0f).ToList();
+            foreach (var sensor in mujocoSensors)
+            {
+                sensor.SiteObject.gameObject.AddComponent<SensorBehavior>();
+            }
+        }
 
         public void SetMujocoJoints(List<MujocoJoint> mujocoJoints)
         {
@@ -67,6 +80,12 @@ namespace MujocoUnity
             }
             UpdateQ();
         }
+
+        void LateUpdate()
+        {
+            for (int i = 0; i < OnSensor.Count; i++)
+                OnSensor[i] = 0f;
+        }
         void UpdateQ()
         {
             float lastQ;
@@ -79,7 +98,7 @@ namespace MujocoUnity
             qpos[1] = topTransform.position.y;
             qvel[1] = qpos[1]-lastQ;
             lastQ = qpos[2];
-            qpos[2] = topTransform.rotation.eulerAngles.z * Mathf.Deg2Rad;
+            qpos[2] = ((topTransform.rotation.eulerAngles.z - 180f) % 180 ) / 180;
             qvel[2] = qpos[2]-lastQ;
             for (int i = 0; i < MujocoJoints.Length; i++)
             {
@@ -93,7 +112,7 @@ namespace MujocoUnity
                 else if (hingeJoint.axis.z != 0f)
                     pos = targ.rotation.eulerAngles.z;
                 if (hingeJoint){
-                    qpos[3+i] = pos * Mathf.Deg2Rad;
+                    qpos[3+i] = ((pos - 180f) % 180 ) / 180;
                     qvel[3+i] = hingeJoint.velocity;
                 }
             }
@@ -142,8 +161,34 @@ namespace MujocoUnity
 
                 JointMotor jm;
                 jm = hingeJoint.motor;
-                jm.targetVelocity = target.Value * 200f;
+                jm.targetVelocity = target.Value * 1500f;
                 hingeJoint.motor = jm;
+            }
+        }
+
+        public void SensorCollisionEnter(Collider sensorCollider, Collision other) {
+			if (string.Compare(other.gameObject.name, "Terrain", true) !=0)
+                return;
+			var otherGameobject = other.gameObject;
+            var sensor = MujocoSensors
+                .FirstOrDefault(x=>x.SiteObject == sensorCollider);
+            if (sensor != null) {
+                var idx = MujocoSensors.IndexOf(sensor);
+                OnSensor[idx] = 1f;
+                SensorIsInTouch[idx] = 1f;
+            }
+		}
+        public void SensorCollisionExit(Collider sensorCollider, Collision other)
+        {
+            if (string.Compare(other.gameObject.name, "Terrain", true) !=0)
+                return;
+			var otherGameobject = other.gameObject;
+            var sensor = MujocoSensors
+                .FirstOrDefault(x=>x.SiteObject == sensorCollider);
+            if (sensor != null) {
+                var idx = MujocoSensors.IndexOf(sensor);
+                OnSensor[idx] = 0f;
+                SensorIsInTouch[idx] = 0f;
             }
         }
     }

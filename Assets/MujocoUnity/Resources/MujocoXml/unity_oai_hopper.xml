@@ -33,6 +33,11 @@
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="30.0" joint="leg_joint"/>
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="10.0" joint="foot_joint"/>
   </actuator>
+  <sensor>
+    <touch name="touch_foot" site="foot_geom"/>
+    <!-- <touch name="touch_toe" site="touch_toe"/> -->
+    <!-- <touch name="touch_heel" site="touch_heel"/> -->
+  </sensor>
     <asset>
         <texture type="skybox" builtin="gradient" rgb1=".4 .5 .6" rgb2="0 0 0"
             width="100" height="100"/>        
