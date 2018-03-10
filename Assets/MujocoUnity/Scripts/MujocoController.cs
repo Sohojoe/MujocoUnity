@@ -18,7 +18,7 @@ namespace MujocoUnity
 
         public List<float> qpos;
         public List<float> qvel;
-        static float _velocityScaler = 20f;//300;//1500f;
+        static float _velocityScaler = 16f;//300;//1500f;
         public List<float> OnSensor;
         public List<float> SensorIsInTouch;
 

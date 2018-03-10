@@ -1075,7 +1075,7 @@ namespace MujocoUnity
 			configurableJoint.anchor = hingeJoint.anchor;
 			configurableJoint.autoConfigureConnectedAnchor = hingeJoint.autoConfigureConnectedAnchor;
 			// configurableJoint.axis = hingeJoint.axis;
-			configurableJoint.axis = new Vector3(hingeJoint.axis.x, hingeJoint.axis.y,0-hingeJoint.axis.z);
+			configurableJoint.axis = new Vector3(0-hingeJoint.axis.x, 0-hingeJoint.axis.y,0-hingeJoint.axis.z);
 			configurableJoint.breakForce = hingeJoint.breakForce;
 			configurableJoint.breakTorque = hingeJoint.breakTorque;
 			configurableJoint.connectedAnchor = hingeJoint.connectedAnchor;
