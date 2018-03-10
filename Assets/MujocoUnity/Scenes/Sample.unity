@@ -385,7 +385,7 @@ Prefab:
     - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
         type: 2}
       propertyPath: UseMotorNotSpring
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
         type: 2}

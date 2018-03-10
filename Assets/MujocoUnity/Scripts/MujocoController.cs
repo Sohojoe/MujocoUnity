@@ -18,6 +18,7 @@ namespace MujocoUnity
 
         public List<float> qpos;
         public List<float> qvel;
+        static float _velocityScaler = 20f;//300;//1500f;
         public List<float> OnSensor;
         public List<float> SensorIsInTouch;
 
@@ -88,33 +89,39 @@ namespace MujocoUnity
         }
         void UpdateQ()
         {
-            float lastQ;
             var topJoint = MujocoJoints[0];
-            var topTransform = topJoint.Joint.transform.parent.transform;
-            lastQ = qpos[0];
+            //var topTransform = topJoint.Joint.transform.parent.transform;
+            // var topRidgedBody = topJoint.Joint.transform.parent.GetComponent<Rigidbody>();
+            var topTransform = topJoint.Joint.transform;
+            var topRidgedBody = topJoint.Joint.transform.GetComponent<Rigidbody>();
             qpos[0] = topTransform.position.x;
-            qvel[0] = qpos[0]-lastQ;
-            lastQ = qpos[1];
+            qvel[0] = topRidgedBody.velocity.x;
             qpos[1] = topTransform.position.y;
-            qvel[1] = qpos[1]-lastQ;
-            lastQ = qpos[2];
+            qvel[1] = topRidgedBody.velocity.y;
             qpos[2] = ((topTransform.rotation.eulerAngles.z - 180f) % 180 ) / 180;
-            qvel[2] = qpos[2]-lastQ;
+            qvel[2] = topRidgedBody.velocity.z;
             for (int i = 0; i < MujocoJoints.Length; i++)
             {
-                var hingeJoint = MujocoJoints[i].Joint as HingeJoint;
-                var targ = hingeJoint.transform.parent.transform;
+                var joint = MujocoJoints[i].Joint;
+                var targ = joint.transform.parent.transform;
                 float pos = 0f;
-                if (hingeJoint.axis.x != 0f)
-                    pos = targ.rotation.eulerAngles.x;
-                else if (hingeJoint.axis.y != 0f)
-                    pos = targ.rotation.eulerAngles.y;
-                else if (hingeJoint.axis.z != 0f)
-                    pos = targ.rotation.eulerAngles.z;
-                if (hingeJoint){
+                if (joint.axis.x != 0f)
+                    pos = targ.localEulerAngles.x;
+                else if (joint.axis.y != 0f)
+                    pos = targ.localEulerAngles.y;
+                else if (joint.axis.z != 0f)
+                    pos = targ.localEulerAngles.z;
+                HingeJoint hingeJoint = joint as HingeJoint;
+                ConfigurableJoint configurableJoint = joint as ConfigurableJoint;
+                if (hingeJoint != null){
                     qpos[3+i] = ((pos - 180f) % 180 ) / 180;
-                    qvel[3+i] = hingeJoint.velocity;
+                    qvel[3+i] = hingeJoint.velocity / _velocityScaler;
                 }
+                else if (configurableJoint != null){
+                    qpos[3+i] = ((pos - 180f) % 180 ) / 180;
+                    qvel[3+i] = 0f;//configurableJoint.angularXLimitSpring..velocity / VelocityScaler;
+                }
+
             }
             
         }
@@ -122,7 +129,16 @@ namespace MujocoUnity
 		static public void ApplyAction(MujocoJoint mJoint, float? target = null)
         {
             HingeJoint hingeJoint = mJoint.Joint as HingeJoint;
-            if (hingeJoint == null)
+            ConfigurableJoint configurableJoint = mJoint.Joint as ConfigurableJoint;
+            if (configurableJoint != null){
+                if (!target.HasValue) // handle random
+                    target = Random.value * 2 - 1;
+                target = Mathf.Clamp(target.Value, -1f, 1f);
+                var t = configurableJoint.targetAngularVelocity;
+                t.x = target.Value * _velocityScaler;
+                configurableJoint.targetAngularVelocity = t;
+                return;
+            } else if (hingeJoint == null)
                 return;
             if (hingeJoint.useSpring)
             {
@@ -130,18 +146,17 @@ namespace MujocoUnity
                 var ctrlRangeMax = 1f;
                 // var ctrlRangeMin = 0f;
                 // var ctrlRangeMax = 1f;
-	            var inputScale = ctrlRangeMax - ctrlRangeMin;
+                var inputScale = ctrlRangeMax - ctrlRangeMin;
                 if (!target.HasValue) // handle random
                     target = ctrlRangeMin + (Random.value * inputScale);
-    
-                JointSpring js;
-                js = hingeJoint.spring;
                 var inputTarget = Mathf.Clamp(target.Value, ctrlRangeMin, ctrlRangeMax);
                 if (ctrlRangeMin < 0)
                     inputTarget = Mathf.Abs(ctrlRangeMin) + inputTarget;
                 else
                     inputTarget = inputTarget - Mathf.Abs(ctrlRangeMin);
                 inputTarget /= inputScale;
+                JointSpring js;
+                js = hingeJoint.spring;
                 var min = hingeJoint.limits.min;
                 var max = hingeJoint.limits.max;
                 var outputScale = max-min;
@@ -161,7 +176,7 @@ namespace MujocoUnity
 
                 JointMotor jm;
                 jm = hingeJoint.motor;
-                jm.targetVelocity = target.Value * 1500f;
+                jm.targetVelocity = target.Value * _velocityScaler;
                 hingeJoint.motor = jm;
             }
         }

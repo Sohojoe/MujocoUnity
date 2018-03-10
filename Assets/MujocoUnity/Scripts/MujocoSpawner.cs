@@ -757,34 +757,46 @@ namespace MujocoUnity
 					DebugPrint($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
 					return joints;
 			}
-            bone = new GameObject();
-            bone.transform.SetPositionAndRotation(parentGeom.Geom.transform.position, parentGeom.Geom.transform.rotation);
-            bone.transform.localScale = parentGeom.Geom.transform.localScale;
-            bone.transform.parent = parentGeom.Geom.transform;
-            var boneRidgedBody = bone.AddComponent<Rigidbody>();
-            joint = bone.AddComponent(jointType) as Joint;
             var existingBone = parentGeom.Bones
                 .Where(x=>x.GetComponent<Joint>().connectedBody == childGeom.Geom.GetComponent<Rigidbody>())
                 .FirstOrDefault();
             if (existingBone) {
+                bone = new GameObject();
+                bone.transform.SetPositionAndRotation(parentGeom.Geom.transform.position, parentGeom.Geom.transform.rotation);
+                bone.transform.localScale = parentGeom.Geom.transform.localScale;
+                bone.transform.parent = parentGeom.Geom.transform;
+                var boneRidgedBody = bone.AddComponent<Rigidbody>();
+                joint = bone.AddComponent(jointType) as Joint;
+                //boneRidgedBody.mass = 0.1f;
+                //joint.massScale = 1f;
+                //joint.connectedMassScale = 10f;
                 existingBone.GetComponent<Joint>().connectedBody = boneRidgedBody;
-            } else {
-                var parentJoint = parentGeom.Geom.AddComponent<FixedJoint>();
-                parentJoint.connectedBody = boneRidgedBody;
-            }
-            parentGeom.Bones.Add(bone);
+                parentGeom.Bones.Add(bone);
 
-            var boneCollider = CopyCollider(bone, parentGeom.Geom);
+            } else {
+                //var parentJoint = parentGeom.Geom.AddComponent<FixedJoint>();
+                //parentJoint.connectedBody = boneRidgedBody;
+                joint = parentGeom.Geom.AddComponent(jointType) as Joint;
+            }
+
+            Collider boneCollider = null;
+            if (bone != null)
+                boneCollider = CopyCollider(bone, parentGeom.Geom);
             joint.connectedBody = childGeom.Geom.GetComponent<Rigidbody>();
 
             if (childGeom != null)
                 joint.connectedBody = childGeom.Geom.GetComponent<Rigidbody>();
-			
+            
             if(_defaultJoint != null)
-                ApplyClassToJoint(_defaultJoint, joint, parentGeom, body, bone);
-            ApplyClassToJoint(element, joint, parentGeom, body, bone);
+                ApplyClassToJoint(_defaultJoint, joint, parentGeom, body, bone ?? parentGeom.Geom);
+            ApplyClassToJoint(element, joint, parentGeom, body, bone ?? parentGeom.Geom);
 
-            Destroy(boneCollider);
+            if (boneCollider != null)
+                Destroy(boneCollider);
+
+            // HACK force as configurable
+            if (jointType == typeof(HingeJoint))
+                joint = ToConfigurable(joint as HingeJoint);
             
             if (joint != null)
                 joints.Add(new KeyValuePair<string,Joint>(jointName, joint));	
@@ -823,6 +835,7 @@ namespace MujocoUnity
         {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
+            ConfigurableJoint configurableJoint = joint as ConfigurableJoint;
             JointSpring spring = hingeJoint?.spring ?? new JointSpring();
             JointMotor motor = hingeJoint?.motor ?? new JointMotor();
             JointLimits limits = hingeJoint?.limits ?? new JointLimits();
@@ -871,10 +884,19 @@ namespace MujocoUnity
                         break;       
 
                     case "range":
-						limits.min = MujocoHelper.ParseGetMin(attribute.Value);
-						limits.max = MujocoHelper.ParseGetMax(attribute.Value);
-                        limits.bounceMinVelocity = 0f;
-						hingeJoint.useLimits = true;
+                        if (hingeJoint != null) {
+                            limits.min = MujocoHelper.ParseGetMin(attribute.Value);
+                            limits.max = MujocoHelper.ParseGetMax(attribute.Value);
+                            limits.bounceMinVelocity = 0f;
+    						hingeJoint.useLimits = true;
+                        } else if (configurableJoint != null) {
+                            var low = configurableJoint.lowAngularXLimit;
+                            low.limit = MujocoHelper.ParseGetMin(attribute.Value);
+                            configurableJoint.lowAngularXLimit = low;
+                            var high = configurableJoint.highAngularXLimit;
+                            high.limit = MujocoHelper.ParseGetMax(attribute.Value);
+                            configurableJoint.highAngularXLimit = high;
+                        }
                         break;
                     case "type":
                         // NOTE: handle in setup
@@ -938,6 +960,7 @@ namespace MujocoUnity
             foreach (Joint joint in matches)
             {
                 HingeJoint hingeJoint = joint as HingeJoint;
+                ConfigurableJoint configurableJoint = joint as ConfigurableJoint;
                 JointSpring spring = new JointSpring(); 
                 JointMotor motor = new JointMotor(); 
                 if (hingeJoint != null) {
@@ -946,6 +969,9 @@ namespace MujocoUnity
                     hingeJoint.useMotor = UseMotorNotSpring;
                     motor = hingeJoint.motor;
                     motor.freeSpin = true;
+                }
+                if (configurableJoint != null){
+                    configurableJoint.rotationDriveMode = RotationDriveMode.XYAndZ;
                 }
                 var mujocoJoint = new MujocoJoint{
                     Joint = joint,
@@ -964,9 +990,11 @@ namespace MujocoUnity
         {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
+            ConfigurableJoint configurableJoint = joint as ConfigurableJoint;
             JointSpring spring = hingeJoint?.spring ?? new JointSpring();
             JointMotor motor = hingeJoint?.motor ?? new JointMotor();
             JointLimits limits = hingeJoint?.limits ?? new JointLimits();
+            var angularXDrive = configurableJoint?.angularXDrive ?? new JointDrive();
             foreach (var attribute in classElement.Attributes())
             {
                 switch (attribute.Name.LocalName)
@@ -988,6 +1016,9 @@ namespace MujocoUnity
                         gear *= ForceMultiple;
                         spring.spring = gear + BaseForce;
                         motor.force = gear + BaseForce;
+                        angularXDrive.maximumForce = gear + BaseForce;
+                        angularXDrive.positionDamper = 1;
+                        angularXDrive.positionSpring = 1;
                         break;
                     case "name":
                         var objName = attribute.Value;
@@ -1003,6 +1034,9 @@ namespace MujocoUnity
                 hingeJoint.spring = spring;                
                 hingeJoint.motor = motor;                
                 hingeJoint.limits = limits;
+            }
+            if(configurableJoint != null) {
+                configurableJoint.angularXDrive = angularXDrive;
             }
         }
 
@@ -1031,5 +1065,51 @@ namespace MujocoUnity
             }
             return mujocoSensors;
         }
+
+		public static Joint ToConfigurable(HingeJoint hingeJoint) {
+            if (hingeJoint.useMotor) {
+				throw new NotImplementedException();
+			}
+
+			ConfigurableJoint configurableJoint = hingeJoint.gameObject.AddComponent<ConfigurableJoint>();
+			configurableJoint.anchor = hingeJoint.anchor;
+			configurableJoint.autoConfigureConnectedAnchor = hingeJoint.autoConfigureConnectedAnchor;
+			// configurableJoint.axis = hingeJoint.axis;
+			configurableJoint.axis = new Vector3(hingeJoint.axis.x, hingeJoint.axis.y,0-hingeJoint.axis.z);
+			configurableJoint.breakForce = hingeJoint.breakForce;
+			configurableJoint.breakTorque = hingeJoint.breakTorque;
+			configurableJoint.connectedAnchor = hingeJoint.connectedAnchor;
+			configurableJoint.connectedBody = hingeJoint.connectedBody;
+			configurableJoint.enableCollision = hingeJoint.enableCollision;
+			configurableJoint.secondaryAxis = Vector3.zero;
+			
+			configurableJoint.xMotion = ConfigurableJointMotion.Locked;
+			configurableJoint.yMotion = ConfigurableJointMotion.Locked;
+			configurableJoint.zMotion = ConfigurableJointMotion.Locked;
+			
+			configurableJoint.angularXMotion = hingeJoint.useLimits? ConfigurableJointMotion.Limited: ConfigurableJointMotion.Free;
+			configurableJoint.angularYMotion = ConfigurableJointMotion.Locked;
+			configurableJoint.angularZMotion = ConfigurableJointMotion.Locked;
+
+
+			SoftJointLimit limit = new SoftJointLimit();
+			limit.limit = hingeJoint.limits.max;
+			limit.bounciness = hingeJoint.limits.bounciness;
+            configurableJoint.highAngularXLimit = limit;
+
+            limit = new SoftJointLimit();
+			limit.limit = hingeJoint.limits.min;
+			limit.bounciness = hingeJoint.limits.bounciness;
+			configurableJoint.lowAngularXLimit = limit;
+
+            SoftJointLimitSpring limitSpring = new SoftJointLimitSpring();
+			limitSpring.damper = hingeJoint.useSpring? hingeJoint.spring.damper: 0f;
+			limitSpring.spring = hingeJoint.useSpring? hingeJoint.spring.spring: 0f;
+            configurableJoint.angularXLimitSpring = limitSpring;
+		
+			GameObject.DestroyImmediate(hingeJoint);
+
+            return configurableJoint;
+		}
 	}
 }
