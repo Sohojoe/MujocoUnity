@@ -103,7 +103,8 @@ namespace MujocoUnity
             for (int i = 0; i < MujocoJoints.Length; i++)
             {
                 var joint = MujocoJoints[i].Joint;
-                var targ = joint.transform.parent.transform;
+                // var targ = joint.transform.parent.transform;
+                var targ = joint.transform;
                 float pos = 0f;
                 if (joint.axis.x != 0f)
                     pos = targ.localEulerAngles.x;
@@ -119,7 +120,8 @@ namespace MujocoUnity
                 }
                 else if (configurableJoint != null){
                     qpos[3+i] = ((pos - 180f) % 180 ) / 180;
-                    qvel[3+i] = 0f;//configurableJoint.angularXLimitSpring..velocity / VelocityScaler;
+                    qvel[3+i] = joint.gameObject.GetComponent<Rigidbody>().velocity.x;
+                    //0f;//configurableJoint.angularXLimitSpring..velocity / VelocityScaler;
                 }
 
             }
