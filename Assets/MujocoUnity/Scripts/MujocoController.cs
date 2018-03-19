@@ -7,7 +7,7 @@ namespace MujocoUnity
 {
     public class MujocoController : MonoBehaviour
     {
-        public MujocoJoint[] MujocoJoints;
+        public List<MujocoJoint> MujocoJoints;
         public List<MujocoSensor> MujocoSensors;
         
         public GameObject CameraTarget;
@@ -18,9 +18,10 @@ namespace MujocoUnity
 
         public List<float> qpos;
         public List<float> qvel;
-        static float _velocityScaler = 16f;//300;//1500f;
+        static float _velocityScaler = 30f;//16f;//300;//1500f;
         public List<float> OnSensor;
         public List<float> SensorIsInTouch;
+        public float MujocoTimeStep;
 
         public void SetMujocoSensors(List<MujocoSensor> mujocoSensors)
         {
@@ -35,17 +36,22 @@ namespace MujocoUnity
 
         public void SetMujocoJoints(List<MujocoJoint> mujocoJoints)
         {
-            MujocoJoints = mujocoJoints.ToArray();
-            targets = Enumerable.Repeat(0f, MujocoJoints.Length).ToArray();
+            MujocoJoints = mujocoJoints;
+            targets = Enumerable.Repeat(0f, MujocoJoints.Count).ToArray();
             if (CameraTarget != null && MujocoJoints != null) {
                 var target = FindTopMesh(MujocoJoints.FirstOrDefault()?.Joint.gameObject, null);
                 var smoothFollow = CameraTarget.GetComponent<SmoothFollow>();
                 if (smoothFollow != null) 
                     smoothFollow.target = target.transform;
             }
-            var qlen = MujocoJoints.Length + 3;
+            var qlen = MujocoJoints.Count + 3;
             qpos = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
             qvel = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
+        }
+
+        public void SetMujocoTimestep(float timestep)
+        {
+            MujocoTimeStep = timestep;
         }
         GameObject FindTopMesh(GameObject curNode, GameObject topmostNode = null)
         {
@@ -70,9 +76,9 @@ namespace MujocoUnity
         // Update is called once per frame
         void Update () 
         {
-            if (MujocoJoints == null || MujocoJoints.Length ==0)
+            if (MujocoJoints == null || MujocoJoints.Count ==0)
                 return;
-            for (int i = 0; i < MujocoJoints.Length; i++)
+            for (int i = 0; i < MujocoJoints.Count; i++)
             {
                 if (applyRandomToAll)
                     ApplyAction(MujocoJoints[i]);
@@ -89,6 +95,7 @@ namespace MujocoUnity
         }
         void UpdateQ()
         {
+			var dt = Time.deltaTime;
             var topJoint = MujocoJoints[0];
             //var topTransform = topJoint.Joint.transform.parent.transform;
             // var topRidgedBody = topJoint.Joint.transform.parent.GetComponent<Rigidbody>();
@@ -100,7 +107,7 @@ namespace MujocoUnity
             qvel[1] = topRidgedBody.velocity.y;
             qpos[2] = ((topTransform.rotation.eulerAngles.z - 180f) % 180 ) / 180;
             qvel[2] = topRidgedBody.velocity.z;
-            for (int i = 0; i < MujocoJoints.Length; i++)
+            for (int i = 0; i < MujocoJoints.Count; i++)
             {
                 var joint = MujocoJoints[i].Joint;
                 // var targ = joint.transform.parent.transform;
@@ -114,14 +121,18 @@ namespace MujocoUnity
                     pos = targ.localEulerAngles.z;
                 HingeJoint hingeJoint = joint as HingeJoint;
                 ConfigurableJoint configurableJoint = joint as ConfigurableJoint;
+                // pos = ((pos - 180f) % 180 ) / 180;
+                pos /= 180f;
                 if (hingeJoint != null){
-                    qpos[3+i] = ((pos - 180f) % 180 ) / 180;
+                    qpos[3+i] = pos;
                     qvel[3+i] = hingeJoint.velocity / _velocityScaler;
                 }
                 else if (configurableJoint != null){
-                    qpos[3+i] = ((pos - 180f) % 180 ) / 180;
-                    qvel[3+i] = joint.gameObject.GetComponent<Rigidbody>().velocity.x;
-                    //0f;//configurableJoint.angularXLimitSpring..velocity / VelocityScaler;
+                    var lastPos = qpos[3+i];
+                    qpos[3+i] = pos;
+                    // var vel = joint.gameObject.GetComponent<Rigidbody>().velocity.x;
+                    var vel = (qpos[3+i] - lastPos) / (dt);
+                    qvel[3+i] = vel;
                 }
 
             }

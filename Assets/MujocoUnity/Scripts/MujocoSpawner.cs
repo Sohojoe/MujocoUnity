@@ -190,8 +190,11 @@ namespace MujocoUnity
                             DebugPrint($"{name} {attribute.Name.LocalName}={attribute.Value}");
                             break;
                         case "timestep":
-                            if (UseMujocoTimestep)
-                                Time.fixedDeltaTime = float.Parse(attribute.Value);
+                            if (UseMujocoTimestep){
+                                var timestep = float.Parse(attribute.Value);
+                                Time.fixedDeltaTime = timestep;
+                                GetComponent<MujocoController>().SetMujocoTimestep(timestep);
+                            }
                             else
                                 DebugPrint($"--*** IGNORING timestep=\"{attribute.Value}\" as UseMujocoTimestep == false");
                             break;
