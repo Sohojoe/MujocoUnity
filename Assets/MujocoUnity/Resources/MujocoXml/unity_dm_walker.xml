@@ -42,12 +42,12 @@
   </worldbody>
   <actuator>
     <!-- <motor joint="torso_joint" ctrlrange="-100.0 100.0" isctrllimited="true"/>-->
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="100" joint="thigh_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="50" joint="leg_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="20" joint="foot_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="100" joint="thigh_left_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="50" joint="leg_left_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="20" joint="foot_left_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="400" joint="thigh_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="350" joint="leg_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="320" joint="foot_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="400" joint="thigh_left_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="350" joint="leg_left_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="320" joint="foot_left_joint"/>
     <!-- <motor joint="finger2_rot" ctrlrange="-20.0 20.0" isctrllimited="true"/>-->
   </actuator>
   <sensor>
