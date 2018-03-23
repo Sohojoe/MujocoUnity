@@ -18,10 +18,13 @@ namespace MujocoUnity
 
         public List<float> qpos;
         public List<float> qvel;
-        static float _velocityScaler = 50f;//16f;//300;//1500f;
+        static float _velocityScaler = 50f;//16f;//300;//1500f; 
         public List<float> OnSensor;
         public List<float> SensorIsInTouch;
         public float MujocoTimeStep;
+
+
+        bool _externalMode;
 
         public void SetMujocoSensors(List<MujocoSensor> mujocoSensors)
         {
@@ -76,6 +79,8 @@ namespace MujocoUnity
         // Update is called once per frame
         void Update () 
         {
+            if(_externalMode)
+                return;
             if (MujocoJoints == null || MujocoJoints.Count ==0)
                 return;
             for (int i = 0; i < MujocoJoints.Count; i++)
@@ -90,8 +95,26 @@ namespace MujocoUnity
 
         void LateUpdate()
         {
+            if (_externalMode)
+                return;
             for (int i = 0; i < OnSensor.Count; i++)
                 OnSensor[i] = 0f;
+        }
+        public void UpdateFromExternalComponent()
+        {
+            for (int i = 0; i < OnSensor.Count; i++)
+                OnSensor[i] = 0f;
+            _externalMode = true;
+            if (MujocoJoints == null || MujocoJoints.Count ==0)
+                return;
+            for (int i = 0; i < MujocoJoints.Count; i++)
+            {
+                if (applyRandomToAll)
+                    ApplyAction(MujocoJoints[i]);
+                else if (applyTargets)
+                    ApplyAction(MujocoJoints[i], targets[i]);
+            }
+            UpdateQ();
         }
         void UpdateQ()
         {

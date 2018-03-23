@@ -38,11 +38,11 @@ namespace MujocoUnity
         Vector3 _orginalTransformPosition;
         public void SpawnFromXml()
         {
-            if (_hasParsed)
-                return;
+            // if (_hasParsed)
+            //     return;
 			LoadXml(MujocoXml.text);
 			Parse();
-            _hasParsed = true;
+            // _hasParsed = true;
         }
 
 
@@ -103,7 +103,7 @@ namespace MujocoUnity
             // // worldbody
 
             // when using world space, geoms will be created in global space
-            // so setting the parent object to 0,0,0 allows us to fix that
+            // so setting the parent object to 0,0,0 allows us to fix that 
             // _orginalTransform = Transform.Instantiate(transform);
             _orginalTransformRotation = this.gameObject.transform.rotation;
             _orginalTransformPosition = this.gameObject.transform.position;
