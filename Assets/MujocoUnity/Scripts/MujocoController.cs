@@ -17,6 +17,7 @@ namespace MujocoUnity
         public float[] targets;
 
         public List<float> qpos;
+        public List<float> qglobpos;
         public List<float> qvel;
         static float _velocityScaler = 50f;//16f;//300;//1500f; 
         public List<float> OnSensor;
@@ -49,6 +50,7 @@ namespace MujocoUnity
             }
             var qlen = MujocoJoints.Count + 3;
             qpos = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
+            qglobpos = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
             qvel = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
         }
 
@@ -116,6 +118,10 @@ namespace MujocoUnity
             }
             UpdateQ();
         }
+        public void UpdateQFromExternalComponent()
+        {
+            UpdateQ();
+        }
         void UpdateQ()
         {
 			var dt = Time.deltaTime;
@@ -125,10 +131,13 @@ namespace MujocoUnity
             var topTransform = topJoint.Joint.transform;
             var topRidgedBody = topJoint.Joint.transform.GetComponent<Rigidbody>();
             qpos[0] = topTransform.position.x;
+            qglobpos[0] = topTransform.position.x;     
             qvel[0] = topRidgedBody.velocity.x;
             qpos[1] = topTransform.position.y;
+            qglobpos[1] = topTransform.position.y;
             qvel[1] = topRidgedBody.velocity.y;
             qpos[2] = ((topTransform.rotation.eulerAngles.z - 180f) % 180 ) / 180;
+            qglobpos[2] = ((topTransform.rotation.eulerAngles.z - 180f) % 180 ) / 180;
             qvel[2] = topRidgedBody.velocity.z;
             for (int i = 0; i < MujocoJoints.Count; i++)
             {
@@ -136,23 +145,33 @@ namespace MujocoUnity
                 // var targ = joint.transform.parent.transform;
                 var targ = joint.transform;
                 float pos = 0f;
-                if (joint.axis.x != 0f)
+                float globPos = 0f;
+                if (joint.axis.x != 0f) {
                     pos = targ.localEulerAngles.x;
-                else if (joint.axis.y != 0f)
+                    globPos = targ.eulerAngles.x;
+                }
+                else if (joint.axis.y != 0f){
                     pos = targ.localEulerAngles.y;
-                else if (joint.axis.z != 0f)
+                    globPos = targ.eulerAngles.y;
+                }
+                else if (joint.axis.z != 0f) {
                     pos = targ.localEulerAngles.z;
+                    globPos = targ.eulerAngles.z;
+                }
                 HingeJoint hingeJoint = joint as HingeJoint;
                 ConfigurableJoint configurableJoint = joint as ConfigurableJoint;
                 // pos = ((pos - 180f) % 180 ) / 180;
                 pos /= 180f;
                 if (hingeJoint != null){
                     qpos[3+i] = pos;
+                    qglobpos[3+i] = globPos;
                     qvel[3+i] = hingeJoint.velocity / _velocityScaler;
                 }
                 else if (configurableJoint != null){
                     var lastPos = qpos[3+i];
                     qpos[3+i] = pos;
+                    var lastgPos = qglobpos[3+i];
+                    qglobpos[3+i] = globPos;
                     // var vel = joint.gameObject.GetComponent<Rigidbody>().velocity.x;
                     var vel = (qpos[3+i] - lastPos) / (dt);
                     qvel[3+i] = vel;

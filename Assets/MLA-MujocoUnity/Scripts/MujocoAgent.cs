@@ -38,7 +38,7 @@ namespace MlaMujocoUnity {
             _numJoints = _mujocoController.qpos.Count;
             _numSensors = _mujocoController.MujocoSensors.Count;            
             _jointSize = 2;
-            _sensorSize = 4;
+            _sensorSize = 1;
             _sensorOffset = _jointSize * _numJoints;
             _observationSize = _sensorOffset + (_sensorSize * _numSensors);
             _observation1D = Enumerable.Repeat<float>(0f, _observationSize).ToArray();
@@ -51,6 +51,8 @@ namespace MlaMujocoUnity {
                 _internalHigh[offset+0] = 5;//10;
                 _internalLow[offset+1] = -5;//-500;
                 _internalHigh[offset+1] = 5;//500;
+                // _internalLow[offset+2] = -5;//-500;
+                // _internalHigh[offset+3] = 5;//500;
             }
             for (int j = 0; j < _numSensors; j++)
             {
@@ -100,6 +102,7 @@ namespace MlaMujocoUnity {
         }
         public override void CollectObservations()
         {
+            _mujocoController.UpdateQFromExternalComponent();
             var joints = _mujocoController.MujocoJoints;
 
            for (int j = 0; j < _numJoints; j++)
@@ -107,14 +110,16 @@ namespace MlaMujocoUnity {
                 var offset = j * _jointSize;
                 _observation1D[offset+00] = _mujocoController.qpos[j];
                 _observation1D[offset+01] = _mujocoController.qvel[j];
+                // _observation1D[offset+02] = _mujocoController.qglobpos[j];
             }
             for (int j = 0; j < _numSensors; j++)
             {
                 var offset = _sensorOffset + (j * _sensorSize);
                 _observation1D[offset+00] = _mujocoController.OnSensor[j];
-                _observation1D[offset+01] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.x;
-                _observation1D[offset+02] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.y;
-                _observation1D[offset+03] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.z;
+                // _observation1D[offset+00] = _mujocoController.SensorIsInTouch[j]; // try this when using nstack
+                // _observation1D[offset+01] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.x;
+                // _observation1D[offset+02] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.y;
+                // _observation1D[offset+03] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.z;
             }
             _observation1D = _observation1D.Select(x=> UnityEngine.Mathf.Clamp(x,-5, 5)).ToArray();
             AddVectorObs(_observation1D);
@@ -138,7 +143,7 @@ namespace MlaMujocoUnity {
             if (done)
             {
                 Done();
-                var reward = 0f;
+                var reward = -100f;
                 AddReward(reward);
             }
             _footHitTerrain = false;
@@ -147,8 +152,8 @@ namespace MlaMujocoUnity {
         float StepReward_OaiHopper()
 		{
 			var alive_bonus = 1f;
-			var reward = (_mujocoController.qvel[0]);
-			// var reward = (_mujocoController.qvel[0] / _frameSkip); 
+			//var reward = (_mujocoController.qvel[0]);
+			var reward = (_mujocoController.qvel[0] / (_frameSkip*2)); 
 			reward += alive_bonus;
 			var effort = _actions
 				.Select(x=>x*x)

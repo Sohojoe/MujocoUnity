@@ -68,7 +68,7 @@ namespace MlaMujocoUnity
                 }
                 mAgent.AgentReset();
 
-                spawnPos.z += 2;                  
+                spawnPos.z += 1;                  
             }
             var template = Actors[0];
             _brain = GameObject.Find("MujocoBrain").GetComponent<Brain>();
