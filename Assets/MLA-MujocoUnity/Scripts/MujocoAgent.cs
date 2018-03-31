@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MujocoUnity;
 using UnityEngine;
+using System;
 
 namespace MlaMujocoUnity {
     public class MujocoAgent : Agent 
@@ -11,6 +12,7 @@ namespace MlaMujocoUnity {
         public string ActorId;
 		public float[] Low;
 		public float[] High;
+        public bool ShowMonitor;
 		float[] _observation1D;
         float[] _internalLow;
         float[] _internalHigh;
@@ -24,7 +26,8 @@ namespace MlaMujocoUnity {
         bool _footHitTerrain;
         bool _nonFootHitTerrain;
         List<float> _actions;
-        bool _wasReset;
+        Func<bool> _terminate;
+        Func<float> _stepReward;
 
         int _frameSkip = 4; // number of physics frames to skip between training
         int _nSteps = 1000; // total number of training steps
@@ -57,7 +60,7 @@ namespace MlaMujocoUnity {
             for (int j = 0; j < _numSensors; j++)
             {
                 var offset = _sensorOffset + (j * _sensorSize);
-                _internalLow[offset+0] = 0;//-10;
+                _internalLow[offset+0] = -1;//-10;
                 _internalHigh[offset+0] = 1;//10;
             }    
             this.brain = GameObject.Find("MujocoBrain").GetComponent<Brain>();
@@ -99,12 +102,60 @@ namespace MlaMujocoUnity {
             mujocoSpawner.SpawnFromXml();
             SetupMujoco();
             _mujocoController.UpdateFromExternalComponent();
+            switch(ActorId)
+            {
+                case "a_oai_walker2d-v0":
+                    _stepReward = StepReward_OaiWalker;
+                    _terminate = Terminate_OnNonFootHitTerrain;
+                    break;
+                case "a_dm_walker-v0":
+                    _stepReward = StepReward_DmWalker;
+                    _terminate = Terminate_OnNonFootHitTerrain;
+                    break;
+                case "a_oai_hopper-v0":
+                    _stepReward = StepReward_OaiHopper;
+                    _terminate = Terminate_HopperOai;
+                    break;
+                case "a_ant-v0":
+                case "a_oai_humanoid-v0":
+                case "a_oai_half_cheetah-v0":
+                default:
+                    throw new NotImplementedException();
+            }
         }
+			// AddRewardFunc("a_oai_half_cheetah-v0", StepReward_VelocityIfNewMaxPosX, TerminalReward_NegNonFoot);
+			// AddRewardFunc("a_oai_hopper-v0", StepReward_OaiHopper, 		TerminalReward_None);
+			// AddRewardFunc("a_oai_humanoid-v0", StepReward_VelocityIfNewMaxPosX, 	TerminalReward_NegNonFoot);
+			// AddRewardFunc("a_oai_humanoid-v01", StepReward_VelocityNegNonFoot, 	TerminalReward_None);
+			// AddRewardFunc("a_oai_humanoid-v02", StepReward_StandNegNonFoot, 	TerminalReward_None);
+			// AddRewardFunc("a_oai_walker2d-v0", StepReward_OaiWalker, 	TerminalReward_NegNonFoot);
+			// AddRewardFunc("a_dm_walker-v0", StepReward_DmWalker, 	TerminalReward_None);
+			// AddRewardFunc("a_RagdollSnake-v0", StepReward_VelocityIfNewMaxPosX, 	TerminalReward_None);
+			// AddRewardFunc("a_RagdollSnake-v01", StepReward_NewMaxPosX, 	TerminalReward_None);
+			// AddRewardFunc("a_ant-v0", StepReward_VelocityIfNewMaxPosX, 	TerminalReward_None);
+			// AddRewardFunc("a_ant-v01", StepReward_NewMaxPosX, 	TerminalReward_None);
+            // AddRewardFunc("a_oai_half_cheetah-v0",  Terminate_OnFall);
+			// AddRewardFunc("a_oai_hopper-v0",        Terminate_HopperOai);//Terminate_OnNonFootHitTerrain);
+			// AddRewardFunc("a_oai_humanoid-v0",      Terminate_OnNonFootHitTerrain);
+			// AddRewardFunc("a_oai_humanoid-v01",     Terminate_OnTenErrors);
+			// AddRewardFunc("a_oai_humanoid-v02",     Terminate_OnNonFootHitTerrain);
+			// AddRewardFunc("a_oai_walker2d-v0",      Terminate_OnNonFootHitTerrain);
+			// AddRewardFunc("a_dm_walker-v0",      	Terminate_OnNonFootHitTerrain);
+			// AddRewardFunc("a_RagdollSnake-v0",      Terminate_Never);
+			// AddRewardFunc("a_RagdollSnake-v01",     Terminate_Never);
+			// AddRewardFunc("a_ant-v0",               Terminate_Never);
+			// AddRewardFunc("a_ant-v01",              Terminate_Never);
         public override void CollectObservations()
         {
             _mujocoController.UpdateQFromExternalComponent();
             var joints = _mujocoController.MujocoJoints;
 
+            if (ShowMonitor) {
+                Monitor.Log("pos", _mujocoController.qpos, MonitorType.hist);
+                Monitor.Log("vel", _mujocoController.qvel, MonitorType.hist);
+                Monitor.Log("onSensor", _mujocoController.OnSensor, MonitorType.hist);
+                Monitor.Log("sensor", _mujocoController.SensorIsInTouch, MonitorType.hist);
+            }
            for (int j = 0; j < _numJoints; j++)
             {
                 var offset = j * _jointSize;
@@ -121,11 +172,20 @@ namespace MlaMujocoUnity {
                 // _observation1D[offset+02] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.y;
                 // _observation1D[offset+03] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.z;
             }
-            _observation1D = _observation1D.Select(x=> UnityEngine.Mathf.Clamp(x,-5, 5)).ToArray();
+            _observation1D = _observation1D
+                .Select(x=> UnityEngine.Mathf.Clamp(x,-5, 5))
+                // .Select(x=> x / 5f)
+                .ToArray();
             AddVectorObs(_observation1D);
         }
+
         public override void AgentAction(float[] vectorAction, string textAction)
         {
+            vectorAction = vectorAction
+                .Select(x=>Mathf.Clamp(x, -1f, 1f))
+                .ToArray();
+            if (ShowMonitor)
+                Monitor.Log("actions", vectorAction, MonitorType.hist);
             _actions = vectorAction.ToList();
             for (int i = 0; i < _mujocoController.MujocoJoints.Count; i++) {
 				var inp = (float)vectorAction[i];
@@ -133,27 +193,54 @@ namespace MlaMujocoUnity {
 			}
             _mujocoController.UpdateFromExternalComponent();
             
-            var done = Terminate_HopperOai();
+            var done = _terminate();//Terminate_HopperOai();
 
-            if (!IsDone())
-            {
-                var reward = StepReward_OaiHopper();
-                SetReward(reward);
-            }
             if (done)
             {
                 Done();
-                var reward = -100f;
-                AddReward(reward);
+                var reward = 0;
+                // var reward = -1000f;
+                SetReward(reward);
+            }
+            if (!IsDone())
+            {
+                var reward = _stepReward();//StepReward_OaiHopper();
+                SetReward(reward);
             }
             _footHitTerrain = false;
             _nonFootHitTerrain = false;
         }  
+
+		float StepReward_OaiWalker()
+		{
+			return StepReward_DmWalker();
+		}
+		float StepReward_DmWalker()
+		{
+			var feetYpos = _mujocoController.MujocoJoints
+				.Where(x=>x.JointName.ToLowerInvariant().Contains("foot"))
+				.Select(x=>x.Joint.transform.position.y)
+				.OrderBy(x=>x)
+				.ToList();
+			var lowestFoot = feetYpos[0];
+			var height = _mujocoController.qpos[1]-lowestFoot;
+
+			var dt = Time.deltaTime;
+			var rawVelocity = _mujocoController.qvel[0];
+			var velocity = 10f * rawVelocity * dt;
+			var uprightBonus = 0.5f * (2 - (Mathf.Abs(_mujocoController.qpos[2])*2)-1);
+			var heightPenality = 1.2f - height;
+			heightPenality = Mathf.Clamp(heightPenality, 0f, 1.2f);
+
+			var reward = velocity+uprightBonus-heightPenality;
+
+			return reward;
+		}
         float StepReward_OaiHopper()
 		{
 			var alive_bonus = 1f;
-			//var reward = (_mujocoController.qvel[0]);
-			var reward = (_mujocoController.qvel[0] / (_frameSkip*2)); 
+			var reward = (_mujocoController.qvel[0]);
+			//var reward = (_mujocoController.qvel[0] / (_frameSkip*2)); 
 			reward += alive_bonus;
 			var effort = _actions
 				.Select(x=>x*x)
@@ -161,6 +248,14 @@ namespace MlaMujocoUnity {
 			reward -= (float) (1e-3 * effort);
 			return reward;
 		}      
+		bool Terminate_Never()
+		{
+			return false;
+		}
+        bool Terminate_OnNonFootHitTerrain()
+		{
+			return _nonFootHitTerrain;
+		}
         bool Terminate_HopperOai()
 		{
 			if (_nonFootHitTerrain)

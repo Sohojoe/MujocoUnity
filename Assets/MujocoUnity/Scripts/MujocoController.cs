@@ -92,7 +92,7 @@ namespace MujocoUnity
                 else if (applyTargets)
                     ApplyAction(MujocoJoints[i], targets[i]);
             }
-            UpdateQ();
+            UpdateQ(true);
         }
 
         void LateUpdate()
@@ -102,7 +102,7 @@ namespace MujocoUnity
             for (int i = 0; i < OnSensor.Count; i++)
                 OnSensor[i] = 0f;
         }
-        public void UpdateFromExternalComponent()
+        public void UpdateFromExternalComponent(bool useDeltaTime = false)
         {
             for (int i = 0; i < OnSensor.Count; i++)
                 OnSensor[i] = 0f;
@@ -116,15 +116,17 @@ namespace MujocoUnity
                 else if (applyTargets)
                     ApplyAction(MujocoJoints[i], targets[i]);
             }
-            UpdateQ();
+            UpdateQ(useDeltaTime);
         }
-        public void UpdateQFromExternalComponent()
+        public void UpdateQFromExternalComponent(bool useDeltaTime = false)
         {
-            UpdateQ();
+            UpdateQ(useDeltaTime);
         }
-        void UpdateQ()
+        void UpdateQ(bool useDeltaTime = false)
         {
-			var dt = Time.deltaTime;
+			float dt = Time.fixedTime;
+            if(useDeltaTime)
+                dt = Time.deltaTime;
             var topJoint = MujocoJoints[0];
             //var topTransform = topJoint.Joint.transform.parent.transform;
             // var topRidgedBody = topJoint.Joint.transform.parent.GetComponent<Rigidbody>();
@@ -160,8 +162,9 @@ namespace MujocoUnity
                 }
                 HingeJoint hingeJoint = joint as HingeJoint;
                 ConfigurableJoint configurableJoint = joint as ConfigurableJoint;
-                // pos = ((pos - 180f) % 180 ) / 180;
-                pos /= 180f;
+                pos = ((pos - 180f) % 180 ) / 180;
+                // pos /= 180f;
+                globPos = ((globPos - 180f) % 180 ) / 180;
                 if (hingeJoint != null){
                     qpos[3+i] = pos;
                     qglobpos[3+i] = globPos;

@@ -37,6 +37,7 @@ namespace MlaMujocoUnity
                     Destroy(actor);
                 }
             }
+            _brain = GameObject.Find("MujocoBrain").GetComponent<Brain>();
             var spawnPos = m_SpawnPoint.position;
             for (int i = 0; i < SpawnCount; i++)
             {
@@ -54,9 +55,10 @@ namespace MlaMujocoUnity
                 var prefab = MujocoPrefab;
                 var instance = Instantiate(prefab, spawnPos, m_SpawnPoint.rotation) as GameObject;
                 var mAgent = instance.AddComponent<MujocoAgent>();
+                mAgent.GiveBrain(_brain);
                 mAgent.MujocoXml = mujocoType.MujocoXml;
                 mAgent.ActorId = actorId;
-
+                mAgent.ShowMonitor = i==0;
 
                 if (Actors == null)
                     Actors = new List<GameObject>();
@@ -71,7 +73,6 @@ namespace MlaMujocoUnity
                 spawnPos.z += 1;                  
             }
             var template = Actors[0];
-            _brain = GameObject.Find("MujocoBrain").GetComponent<Brain>();
             _brain.brainParameters.vectorObservationSize = template.GetComponent<MujocoAgent>().GetObservationCount();
             _brain.brainParameters.vectorActionSize = template.GetComponent<MujocoAgent>().GetActionsCount();
         }
