@@ -85,6 +85,7 @@ namespace MlaMujocoUnity {
      
         public override void AgentReset()
         {
+            Monitor.SetActive(true);
             _mujocoController = GetComponent<MujocoController>();
             _mujocoController.MujocoJoints = null;
             _mujocoController.MujocoSensors = null;
@@ -166,8 +167,8 @@ namespace MlaMujocoUnity {
             for (int j = 0; j < _numSensors; j++)
             {
                 var offset = _sensorOffset + (j * _sensorSize);
-                _observation1D[offset+00] = _mujocoController.OnSensor[j];
-                // _observation1D[offset+00] = _mujocoController.SensorIsInTouch[j]; // try this when using nstack
+                // _observation1D[offset+00] = _mujocoController.OnSensor[j];
+                _observation1D[offset+00] = _mujocoController.SensorIsInTouch[j]; // try this when using nstack
                 // _observation1D[offset+01] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.x;
                 // _observation1D[offset+02] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.y;
                 // _observation1D[offset+03] = _mujocoController.MujocoSensors[j].SiteObject.transform.position.z;
@@ -181,14 +182,13 @@ namespace MlaMujocoUnity {
 
         public override void AgentAction(float[] vectorAction, string textAction)
         {
-            vectorAction = vectorAction
-                .Select(x=>Mathf.Clamp(x, -1f, 1f))
-                .ToArray();
+            _actions = vectorAction
+                .Select(x=>Mathf.Clamp(x, -1, 1f))
+                .ToList();
             if (ShowMonitor)
-                Monitor.Log("actions", vectorAction, MonitorType.hist);
-            _actions = vectorAction.ToList();
+                Monitor.Log("actions", _actions, MonitorType.hist);
             for (int i = 0; i < _mujocoController.MujocoJoints.Count; i++) {
-				var inp = (float)vectorAction[i];
+				var inp = (float)_actions[i];
 				MujocoController.ApplyAction(_mujocoController.MujocoJoints[i], inp);
 			}
             _mujocoController.UpdateFromExternalComponent();
@@ -225,14 +225,39 @@ namespace MlaMujocoUnity {
 			var lowestFoot = feetYpos[0];
 			var height = _mujocoController.qpos[1]-lowestFoot;
 
-			var dt = Time.deltaTime;
+			var dt = Time.fixedDeltaTime;
 			var rawVelocity = _mujocoController.qvel[0];
-			var velocity = 10f * rawVelocity * dt;
+			var velocity = 10f * rawVelocity * dt * _frameSkip;
+			// var velocity = rawVelocity;
 			var uprightBonus = 0.5f * (2 - (Mathf.Abs(_mujocoController.qpos[2])*2)-1);
-			var heightPenality = 1.2f - height;
-			heightPenality = Mathf.Clamp(heightPenality, 0f, 1.2f);
+			var heightPenality = 1.0f - height;
+			heightPenality = Mathf.Clamp(heightPenality, 0f, 1.0f);
+			// var heightPenality = .85f - height;
+			// var heightPenality = .65f - height;
+			// heightPenality = Mathf.Clamp(heightPenality, 0f, .65f);
 
-			var reward = velocity+uprightBonus-heightPenality;
+			var effort = _actions
+				.Select(x=>Mathf.Pow(Mathf.Abs(x),2))
+				.Sum();
+            // var effortPenality = 1e-3f * (float)effort;
+            var effortPenality = 1e-1f * (float)effort;
+
+			var reward = velocity
+                +uprightBonus
+                -heightPenality
+                -effortPenality;
+            if (ShowMonitor) {
+                var hist = new []{reward,velocity,uprightBonus,-heightPenality,-effortPenality}.ToList();
+                Monitor.Log("rewardHist", hist, MonitorType.hist);
+                Monitor.Log("effortPenality", effortPenality, MonitorType.text);
+                Monitor.Log("heightPenality", heightPenality, MonitorType.text);
+                Monitor.Log("uprightBonus", uprightBonus, MonitorType.text);
+                Monitor.Log("heightPenality", heightPenality, MonitorType.text);
+                Monitor.Log("velocity", velocity, MonitorType.text);
+                Monitor.Log("reward", reward, MonitorType.text);
+                Monitor.Log("height", height, MonitorType.text);
+                Monitor.Log("effort", effort, MonitorType.text);
+            }
 
 			return reward;
 		}

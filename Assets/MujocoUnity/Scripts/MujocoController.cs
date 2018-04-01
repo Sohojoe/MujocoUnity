@@ -124,7 +124,7 @@ namespace MujocoUnity
         }
         void UpdateQ(bool useDeltaTime = false)
         {
-			float dt = Time.fixedTime;
+			float dt = Time.fixedDeltaTime;
             if(useDeltaTime)
                 dt = Time.deltaTime;
             var topJoint = MujocoJoints[0];
