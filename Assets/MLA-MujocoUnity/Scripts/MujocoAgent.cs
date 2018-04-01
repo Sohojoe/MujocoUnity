@@ -152,10 +152,10 @@ namespace MlaMujocoUnity {
             var joints = _mujocoController.MujocoJoints;
 
             if (ShowMonitor) {
-                Monitor.Log("pos", _mujocoController.qpos, MonitorType.hist);
-                Monitor.Log("vel", _mujocoController.qvel, MonitorType.hist);
-                Monitor.Log("onSensor", _mujocoController.OnSensor, MonitorType.hist);
-                Monitor.Log("sensor", _mujocoController.SensorIsInTouch, MonitorType.hist);
+                // Monitor.Log("pos", _mujocoController.qpos, MonitorType.hist);
+                // Monitor.Log("vel", _mujocoController.qvel, MonitorType.hist);
+                // Monitor.Log("onSensor", _mujocoController.OnSensor, MonitorType.hist);
+                // Monitor.Log("sensor", _mujocoController.SensorIsInTouch, MonitorType.hist);
             }
            for (int j = 0; j < _numJoints; j++)
             {
@@ -185,8 +185,8 @@ namespace MlaMujocoUnity {
             _actions = vectorAction
                 .Select(x=>Mathf.Clamp(x, -1, 1f))
                 .ToList();
-            if (ShowMonitor)
-                Monitor.Log("actions", _actions, MonitorType.hist);
+            // if (ShowMonitor)
+            //     Monitor.Log("actions", _actions, MonitorType.hist);
             for (int i = 0; i < _mujocoController.MujocoJoints.Count; i++) {
 				var inp = (float)_actions[i];
 				MujocoController.ApplyAction(_mujocoController.MujocoJoints[i], inp);
@@ -215,8 +215,8 @@ namespace MlaMujocoUnity {
 		{
 			return StepReward_DmWalker();
 		}
-		float StepReward_DmWalker()
-		{
+        float GetHeight()
+        {
 			var feetYpos = _mujocoController.MujocoJoints
 				.Where(x=>x.JointName.ToLowerInvariant().Contains("foot"))
 				.Select(x=>x.Joint.transform.position.y)
@@ -224,21 +224,51 @@ namespace MlaMujocoUnity {
 				.ToList();
 			var lowestFoot = feetYpos[0];
 			var height = _mujocoController.qpos[1]-lowestFoot;
-
+            return height;
+        }
+        float GetVelocity()
+        {
 			var dt = Time.fixedDeltaTime;
 			var rawVelocity = _mujocoController.qvel[0];
 			var velocity = 10f * rawVelocity * dt * _frameSkip;
-			// var velocity = rawVelocity;
+            // if (ShowMonitor)
+                // Monitor.Log("velocity", velocity, MonitorType.text);
+            return velocity;
+        }
+        float GetUprightBonus()
+        {
 			var uprightBonus = 0.5f * (2 - (Mathf.Abs(_mujocoController.qpos[2])*2)-1);
-			var heightPenality = 1.0f - height;
-			heightPenality = Mathf.Clamp(heightPenality, 0f, 1.0f);
-			// var heightPenality = .85f - height;
-			// var heightPenality = .65f - height;
-			// heightPenality = Mathf.Clamp(heightPenality, 0f, .65f);
-
+            // if (ShowMonitor)
+                // Monitor.Log("uprightBonus", uprightBonus, MonitorType.text);
+            return uprightBonus;
+        }
+        float GetHeightPenality(float maxHeight)
+        {
+            var height = GetHeight();
+            var heightPenality = maxHeight - height;
+			heightPenality = Mathf.Clamp(heightPenality, 0f, maxHeight);
+            // if (ShowMonitor) {
+            //     Monitor.Log("height", height, MonitorType.text);
+            //     Monitor.Log("heightPenality", heightPenality, MonitorType.text);
+            // }
+            return heightPenality;
+        }
+        float GetEffort()
+        {
 			var effort = _actions
 				.Select(x=>Mathf.Pow(Mathf.Abs(x),2))
 				.Sum();
+            // if (ShowMonitor)
+                // Monitor.Log("effort", effort, MonitorType.text);
+            return effort;
+        }
+		float StepReward_DmWalker()
+		{
+            // float heightPenality = GetHeightPenality(1f);
+            float heightPenality = GetHeightPenality(.65f);
+            float uprightBonus = GetUprightBonus();
+            float velocity = GetVelocity();
+            float effort = GetEffort();
             // var effortPenality = 1e-3f * (float)effort;
             var effortPenality = 1e-1f * (float)effort;
 
@@ -249,28 +279,29 @@ namespace MlaMujocoUnity {
             if (ShowMonitor) {
                 var hist = new []{reward,velocity,uprightBonus,-heightPenality,-effortPenality}.ToList();
                 Monitor.Log("rewardHist", hist, MonitorType.hist);
-                Monitor.Log("effortPenality", effortPenality, MonitorType.text);
-                Monitor.Log("heightPenality", heightPenality, MonitorType.text);
-                Monitor.Log("uprightBonus", uprightBonus, MonitorType.text);
-                Monitor.Log("heightPenality", heightPenality, MonitorType.text);
-                Monitor.Log("velocity", velocity, MonitorType.text);
-                Monitor.Log("reward", reward, MonitorType.text);
-                Monitor.Log("height", height, MonitorType.text);
-                Monitor.Log("effort", effort, MonitorType.text);
+                // Monitor.Log("effortPenality", effortPenality, MonitorType.text);
+                // Monitor.Log("reward", reward, MonitorType.text);
             }
 
 			return reward;
 		}
         float StepReward_OaiHopper()
 		{
-			var alive_bonus = 1f;
-			var reward = (_mujocoController.qvel[0]);
-			//var reward = (_mujocoController.qvel[0] / (_frameSkip*2)); 
-			reward += alive_bonus;
-			var effort = _actions
-				.Select(x=>x*x)
-				.Sum();
-			reward -= (float) (1e-3 * effort);
+            float heightPenality = GetHeightPenality(.65f);
+            float uprightBonus = GetUprightBonus();
+            float velocity = GetVelocity();
+            float effort = GetEffort();
+			var alive_bonus = 0.5f;
+            // var effortPenality = 1e-3f * (float)effort;
+            var effortPenality = 1e-1f * (float)effort;
+			var reward = velocity 
+                + alive_bonus
+			    - effortPenality;
+            if (ShowMonitor) {
+                var hist = new []{reward,velocity,alive_bonus,-effortPenality}.ToList();
+                Monitor.Log("rewardHist", hist, MonitorType.hist);
+                // Monitor.Log("effortPenality", effortPenality, MonitorType.text);
+            }
 			return reward;
 		}      
 		bool Terminate_Never()
