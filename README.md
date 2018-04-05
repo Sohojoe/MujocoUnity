@@ -4,11 +4,29 @@
 
 Presented March 19th, 2018 at the AI Summit - Game Developer Conference 2018 - http://schedule.gdconf.com/session/beyond-bots-making-machine-learning-accessible-and-useful/856147
 
+### v0.2 
+supports Unity ml-agents ([instructions](Docs/ml_agents.md))
+
+### Trained with ml-agents PPO:
+
+**unity_oai_hopper.xml** 
+
+![Mujoco Hopper 1.5m](Docs/Images/hopper_1.5m_ml_agents_ppo.gif) 1.5m steps 
+
+**unity_dm_walker.xml** 
+
+![Mujoco Hopper 1.5m](Docs/Images/walker_3m_ml_agents_ppo.gif) 3m steps 
+
+
 ### Trained with Baselines DDPG:
 
-**unity_oai_hopper.xml** 300k steps ![Mujoco Hopper 300k](https://github.com/Sohojoe/MujocoUnity/blob/master/Docs/Images/hopper_300k.gif) 2m steps ![Mujoco Hopper 300k](https://github.com/Sohojoe/MujocoUnity/blob/master/Docs/Images/hopper_2m.gif)
+**unity_oai_hopper.xml** 
 
-**unity_dm_walker.xml** 1m steps ![Mujoco Hopper 300k](https://github.com/Sohojoe/MujocoUnity/blob/master/Docs/Images/dm_walker_1m.gif) 3m steps ![Mujoco Hopper 300k](https://github.com/Sohojoe/MujocoUnity/blob/master/Docs/Images/dm_walker_3m.gif)
+![Mujoco Hopper 300k](https://github.com/Sohojoe/MujocoUnity/blob/master/Docs/Images/hopper_300k.gif) 300k steps ![Mujoco Hopper 300k](https://github.com/Sohojoe/MujocoUnity/blob/master/Docs/Images/hopper_2m.gif) 2m steps 
+
+**unity_dm_walker.xml** 
+
+![Mujoco Hopper 300k](https://github.com/Sohojoe/MujocoUnity/blob/master/Docs/Images/dm_walker_1m.gif) 1m steps ![Mujoco Hopper 300k](https://github.com/Sohojoe/MujocoUnity/blob/master/Docs/Images/dm_walker_3m.gif) 3m steps 
 
 
 Note: to reproduce you'll need to figure out how to patch OpenAI baselines with Unity. 
