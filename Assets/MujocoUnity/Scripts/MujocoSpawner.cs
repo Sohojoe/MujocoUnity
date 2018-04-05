@@ -48,7 +48,7 @@ namespace MujocoUnity
 
 		// Use this for initialization
 		void Start () {
-            SpawnFromXml();
+            //SpawnFromXml();
 		}
 
 		// Update is called once per frame
