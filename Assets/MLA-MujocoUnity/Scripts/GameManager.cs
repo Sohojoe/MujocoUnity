@@ -55,10 +55,10 @@ namespace MlaMujocoUnity
                 var prefab = MujocoPrefab;
                 var instance = Instantiate(prefab, spawnPos, m_SpawnPoint.rotation) as GameObject;
                 var mAgent = instance.AddComponent<MujocoAgent>();
-                mAgent.GiveBrain(_brain);
                 mAgent.MujocoXml = mujocoType.MujocoXml;
                 mAgent.ActorId = actorId;
                 mAgent.ShowMonitor = i==0;
+                mAgent.GiveBrain(_brain);
 
                 if (Actors == null)
                     Actors = new List<GameObject>();
