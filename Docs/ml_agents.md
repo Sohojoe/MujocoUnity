@@ -9,7 +9,7 @@
 5. Set brain to external, build and run from your python path (follow unity ml-agents documentation)
 
 
-#### Hyperparameters used for walker_w37-3m / 1.5 and hopper_h2-1.5m
+#### Hyperparameters used for walker_w57-3m / 1.5 and hopper_h2-1.5m
 ```yaml
 MujocoBrain:
     beta: 1.0e-4
