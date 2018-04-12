@@ -117,8 +117,11 @@ namespace MlaMujocoUnity {
                     _stepReward = StepReward_OaiHopper;
                     _terminate = Terminate_HopperOai;
                     break;
-                case "a_ant-v0":
                 case "a_oai_humanoid-v0":
+                    _stepReward = StepReward_OaiHumanoid;
+                    _terminate = Terminate_OnNonFootHitTerrain;
+                    break;
+                case "a_ant-v0":
                 case "a_oai_half_cheetah-v0":
                 default:
                     throw new NotImplementedException();
@@ -222,7 +225,9 @@ namespace MlaMujocoUnity {
 				.Select(x=>x.Joint.transform.position.y)
 				.OrderBy(x=>x)
 				.ToList();
-			var lowestFoot = feetYpos[0];
+            float lowestFoot = 0f;
+            if(feetYpos!=null && feetYpos.Count != 0)
+                lowestFoot = feetYpos[0];
 			var height = _mujocoController.qpos[1]-lowestFoot;
             return height;
         }
@@ -247,10 +252,10 @@ namespace MlaMujocoUnity {
             var height = GetHeight();
             var heightPenality = maxHeight - height;
 			heightPenality = Mathf.Clamp(heightPenality, 0f, maxHeight);
-            // if (ShowMonitor) {
-            //     Monitor.Log("height", height, MonitorType.text);
-            //     Monitor.Log("heightPenality", heightPenality, MonitorType.text);
-            // }
+            if (ShowMonitor) {
+                Monitor.Log("height", height, MonitorType.text);
+                Monitor.Log("heightPenality", heightPenality, MonitorType.text);
+            }
             return heightPenality;
         }
         float GetEffort()
@@ -285,8 +290,8 @@ namespace MlaMujocoUnity {
 
 			return reward;
 		}
-        float StepReward_OaiHopper()
-		{
+        float StepReward_OaiHumanoid()
+        {
             float heightPenality = GetHeightPenality(.65f);
             float uprightBonus = GetUprightBonus();
             float velocity = GetVelocity();
@@ -294,6 +299,25 @@ namespace MlaMujocoUnity {
 			var alive_bonus = 0.5f;
             // var effortPenality = 1e-3f * (float)effort;
             var effortPenality = 1e-1f * (float)effort;
+			var reward = velocity 
+                + alive_bonus
+			    - effortPenality;
+            if (ShowMonitor) {
+                var hist = new []{reward,velocity,alive_bonus,-effortPenality}.ToList();
+                Monitor.Log("rewardHist", hist, MonitorType.hist);
+                // Monitor.Log("effortPenality", effortPenality, MonitorType.text);
+            }
+			return reward;            
+        }
+        float StepReward_OaiHopper()
+		{
+            float heightPenality = GetHeightPenality(1.0f);
+            float uprightBonus = GetUprightBonus();
+            float velocity = GetVelocity();
+            float effort = GetEffort();
+			var alive_bonus = 0.5f;
+            var effortPenality = 1e-3f * (float)effort;
+            // var effortPenality = 1e-1f * (float)effort;
 			var reward = velocity 
                 + alive_bonus
 			    - effortPenality;

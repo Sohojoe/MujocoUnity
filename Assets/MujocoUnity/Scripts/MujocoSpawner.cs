@@ -733,6 +733,8 @@ namespace MujocoUnity
 			var joints = new List<KeyValuePair<string, Joint>>();
 
             GameObject bone = null;
+            var childRidgedBody = childGeom.Geom.GetComponent<Rigidbody>();
+            var parentRidgedBody = parentGeom.Geom.GetComponent<Rigidbody>();
             
             var element = xdoc;
             if (element == null)
@@ -760,36 +762,35 @@ namespace MujocoUnity
 					DebugPrint($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
 					return joints;
 			}
-            var existingBone = parentGeom.Bones
-                .Where(x=>x.GetComponent<Joint>().connectedBody == childGeom.Geom.GetComponent<Rigidbody>())
-                .FirstOrDefault();
-            if (existingBone) {
+            Joint existingJoint = parentGeom.Bones
+                .SelectMany(x=>x.GetComponents<Joint>())
+                .FirstOrDefault(y=>y.connectedBody == childRidgedBody);
+            if (existingJoint) {
                 bone = new GameObject();
-                bone.transform.SetPositionAndRotation(parentGeom.Geom.transform.position, parentGeom.Geom.transform.rotation);
+                // bone.transform.SetPositionAndRotation(parentGeom.Geom.transform.position, parentGeom.Geom.transform.rotation);
+                // bone.transform.localScale = parentGeom.Geom.transform.localScale;
+                bone.transform.SetPositionAndRotation(childGeom.Geom.transform.position, childGeom.Geom.transform.rotation);
                 bone.transform.localScale = parentGeom.Geom.transform.localScale;
                 bone.transform.parent = parentGeom.Geom.transform;
+                bone.name = jointName;
                 var boneRidgedBody = bone.AddComponent<Rigidbody>();
                 joint = bone.AddComponent(jointType) as Joint;
-                //boneRidgedBody.mass = 0.1f;
-                //joint.massScale = 1f;
-                //joint.connectedMassScale = 10f;
-                existingBone.GetComponent<Joint>().connectedBody = boneRidgedBody;
+                // existingBone.GetComponent<Joint>().connectedBody = boneRidgedBody;
+                existingJoint.connectedBody = boneRidgedBody;
                 parentGeom.Bones.Add(bone);
-
             } else {
                 //var parentJoint = parentGeom.Geom.AddComponent<FixedJoint>();
                 //parentJoint.connectedBody = boneRidgedBody;
                 joint = parentGeom.Geom.AddComponent(jointType) as Joint;
+                if (!parentGeom.Bones.Contains(parentGeom.Geom))
+                    parentGeom.Bones.Add(parentGeom.Geom);
             }
 
             Collider boneCollider = null;
             if (bone != null)
                 boneCollider = CopyCollider(bone, parentGeom.Geom);
-            joint.connectedBody = childGeom.Geom.GetComponent<Rigidbody>();
+            joint.connectedBody = childRidgedBody;
 
-            if (childGeom != null)
-                joint.connectedBody = childGeom.Geom.GetComponent<Rigidbody>();
-            
             if(_defaultJoint != null)
                 ApplyClassToJoint(_defaultJoint, joint, parentGeom, body, bone ?? parentGeom.Geom);
             ApplyClassToJoint(element, joint, parentGeom, body, bone ?? parentGeom.Geom);
@@ -797,12 +798,11 @@ namespace MujocoUnity
             if (boneCollider != null)
                 Destroy(boneCollider);
 
-            // HACK force as configurable
+            // force as configurable
             if (jointType == typeof(HingeJoint))
                 joint = ToConfigurable(joint as HingeJoint);
             
-            if (joint != null)
-                joints.Add(new KeyValuePair<string,Joint>(jointName, joint));	
+            joints.Add(new KeyValuePair<string,Joint>(jointName, joint));	
 			return joints;
 		}
 
@@ -864,7 +864,7 @@ namespace MujocoUnity
                         joint.axis = axis;
                         break;
                     case "name":
-                        if (bone != null)
+                        if (bone != null && string.IsNullOrEmpty(bone.name))
                             bone.name = attribute.Value;
                         break;
                     case "pos":
