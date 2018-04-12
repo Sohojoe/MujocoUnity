@@ -13,11 +13,13 @@ namespace MujocoUnity
         }
         void OnCollisionEnter(Collision other) 
         {
-            _mujocoController.SensorCollisionEnter(_collider, other);
+            if (_mujocoController!=null)
+                _mujocoController.SensorCollisionEnter(_collider, other);
         }
         void OnCollisionExit(Collision other) 
         {
-            _mujocoController.SensorCollisionExit(_collider, other);
+            if (_mujocoController!=null)
+                _mujocoController.SensorCollisionExit(_collider, other);
         }
 
     }
