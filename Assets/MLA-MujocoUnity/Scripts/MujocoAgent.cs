@@ -93,9 +93,10 @@ namespace MlaMujocoUnity {
             // foreach (var item in joints)
             //     Destroy(item.gameObject);
             var rbs = this.GetComponentsInChildren<Rigidbody>().ToList();
-            foreach (var item in rbs)
-                // DestroyImmediate(item.gameObject);
-                Destroy(item.gameObject);
+            foreach (var item in rbs){
+                if (item != null) 
+                    DestroyImmediate(item.gameObject);
+            }
             Resources.UnloadUnusedAssets();
 
             var mujocoSpawner = this.GetComponent<MujocoUnity.MujocoSpawner>();

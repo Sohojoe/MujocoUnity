@@ -17,6 +17,7 @@ namespace MujocoUnity
         public bool UseMujocoTimestep; // use option timestep=xxx to set physics timestep
         public bool DebugOutput;
         public bool GravityOff;
+        public bool SpawnOnStart;
         public string[] ListOf2dScripts = new string[] {"half_cheetah", "hopper", "walker2d"};
 
         public bool UseMotorNotSpring;
@@ -48,7 +49,8 @@ namespace MujocoUnity
 
 		// Use this for initialization
 		void Start () {
-            //SpawnFromXml();
+            if (SpawnOnStart)
+                SpawnFromXml();
 		}
 
 		// Update is called once per frame
@@ -769,7 +771,7 @@ namespace MujocoUnity
                 bone = new GameObject();
                 // bone.transform.SetPositionAndRotation(parentGeom.Geom.transform.position, parentGeom.Geom.transform.rotation);
                 // bone.transform.localScale = parentGeom.Geom.transform.localScale;
-                bone.transform.SetPositionAndRotation(childGeom.Geom.transform.position, childGeom.Geom.transform.rotation);
+                bone.transform.SetPositionAndRotation(childGeom.Geom.transform.position, parentGeom.Geom.transform.rotation);
                 bone.transform.localScale = parentGeom.Geom.transform.localScale;
                 bone.transform.parent = parentGeom.Geom.transform;
                 bone.name = jointName;
