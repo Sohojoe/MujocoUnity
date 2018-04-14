@@ -776,6 +776,7 @@ namespace MujocoUnity
                 bone.transform.parent = parentGeom.Geom.transform;
                 bone.name = jointName;
                 var boneRidgedBody = bone.AddComponent<Rigidbody>();
+                boneRidgedBody.useGravity = false;
                 joint = bone.AddComponent(jointType) as Joint;
                 // existingBone.GetComponent<Joint>().connectedBody = boneRidgedBody;
                 existingJoint.connectedBody = boneRidgedBody;
