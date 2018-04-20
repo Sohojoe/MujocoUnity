@@ -73,8 +73,8 @@ namespace MlaMujocoUnity
                 spawnPos.z += 1;                  
             }
             var template = Actors[0];
-            _brain.brainParameters.vectorObservationSize = template.GetComponent<MujocoAgent>().GetObservationCount();
-            _brain.brainParameters.vectorActionSize = template.GetComponent<MujocoAgent>().GetActionsCount();
+            // _brain.brainParameters.vectorObservationSize = template.GetComponent<MujocoAgent>().GetObservationCount();
+            // _brain.brainParameters.vectorActionSize = template.GetComponent<MujocoAgent>().GetActionsCount();
         }
 		private IEnumerator GameLoop ()
         {

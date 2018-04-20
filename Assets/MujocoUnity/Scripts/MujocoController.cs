@@ -19,10 +19,21 @@ namespace MujocoUnity
         public List<float> qpos;
         public List<float> qglobpos;
         public List<float> qvel;
-        static float _velocityScaler = 50f;//16f;//300;//1500f; 
+        static float _velocityScaler = 50f; //50f;//16f;//300;//1500f; 
         public List<float> OnSensor;
         public List<float> SensorIsInTouch;
         public float MujocoTimeStep;
+
+        public GameObject _focalPoint;
+
+        public Vector3 FocalPointPosition;
+        public Vector3 FocalPointPositionVelocity;
+        public Vector3 FocalPointRotation;
+        public Vector3 FocalPointEulerAngles;
+        public Vector3 FocalPointRotationVelocity;
+        public List<float> JointAngles;
+        public List<float> JointVelocity;
+        
 
 
         bool _externalMode;
@@ -42,16 +53,19 @@ namespace MujocoUnity
         {
             MujocoJoints = mujocoJoints;
             targets = Enumerable.Repeat(0f, MujocoJoints.Count).ToArray();
+            var target = FindTopMesh(MujocoJoints.FirstOrDefault()?.Joint.gameObject, null);
             if (CameraTarget != null && MujocoJoints != null) {
-                var target = FindTopMesh(MujocoJoints.FirstOrDefault()?.Joint.gameObject, null);
                 var smoothFollow = CameraTarget.GetComponent<SmoothFollow>();
                 if (smoothFollow != null) 
                     smoothFollow.target = target.transform;
             }
+            _focalPoint = target;
             var qlen = MujocoJoints.Count + 3;
             qpos = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
             qglobpos = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
             qvel = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
+            JointAngles = Enumerable.Range(0,MujocoJoints.Count).Select(x=>0f).ToList();
+            JointVelocity = Enumerable.Range(0,MujocoJoints.Count).Select(x=>0f).ToList();
         }
 
         public void SetMujocoTimestep(float timestep)
@@ -127,6 +141,19 @@ namespace MujocoUnity
 			float dt = Time.fixedDeltaTime;
             if(useDeltaTime)
                 dt = Time.deltaTime;
+
+            var focalTransform = _focalPoint.transform;
+            var focalRidgedBody = _focalPoint.GetComponent<Rigidbody>();
+            FocalPointPosition = focalTransform.position;
+            FocalPointPositionVelocity = focalRidgedBody.velocity;
+            var lastFocalPointRotationVelocity = FocalPointRotation;
+            FocalPointEulerAngles = focalTransform.eulerAngles;
+            FocalPointRotation = new Vector3(
+                ((FocalPointEulerAngles.x - 180f) % 180 ) / 180,
+                ((FocalPointEulerAngles.y - 180f) % 180 ) / 180,
+                ((FocalPointEulerAngles.z - 180f) % 180 ) / 180);
+            FocalPointRotationVelocity = (FocalPointRotation-lastFocalPointRotationVelocity);
+                        
             var topJoint = MujocoJoints[0];
             //var topTransform = topJoint.Joint.transform.parent.transform;
             // var topRidgedBody = topJoint.Joint.transform.parent.GetComponent<Rigidbody>();
@@ -173,11 +200,14 @@ namespace MujocoUnity
                 else if (configurableJoint != null){
                     var lastPos = qpos[3+i];
                     qpos[3+i] = pos;
+                    JointAngles[i] = pos;
                     var lastgPos = qglobpos[3+i];
                     qglobpos[3+i] = globPos;
                     // var vel = joint.gameObject.GetComponent<Rigidbody>().velocity.x;
+                    // var vel = configurableJoint.
                     var vel = (qpos[3+i] - lastPos) / (dt);
                     qvel[3+i] = vel;
+                    JointVelocity[i] = vel;
                 }
 
             }

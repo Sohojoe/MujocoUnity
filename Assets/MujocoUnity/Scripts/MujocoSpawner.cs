@@ -117,8 +117,6 @@ namespace MujocoUnity
             var mujocoJoints = ParseGears(element.Element("actuator"), joints);
             var mujocoSensors = ParseSensors(element.Element("sensor"), GetComponentsInChildren<Collider>());
             
-            GetComponent<MujocoController>().SetMujocoJoints(mujocoJoints);
-            GetComponent<MujocoController>().SetMujocoSensors(mujocoSensors);
             if (Material != null)
                 foreach (var item in GetComponentsInChildren<Renderer>())
                 {
@@ -165,6 +163,9 @@ namespace MujocoUnity
             // restore positions and orientation
             this.gameObject.transform.rotation = _orginalTransformRotation;
             this.gameObject.transform.position = _orginalTransformPosition;
+
+            GetComponent<MujocoController>().SetMujocoJoints(mujocoJoints);
+            GetComponent<MujocoController>().SetMujocoSensors(mujocoSensors);
 
             if (OnGenerateApplyRandom != 0f){
                 foreach (var item in mujocoJoints) {
