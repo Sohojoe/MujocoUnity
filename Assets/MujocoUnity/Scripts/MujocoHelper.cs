@@ -6,7 +6,7 @@ namespace MujocoUnity
 {
     public static class MujocoHelper
     {
-        static readonly bool MujocoFlipYZ = true;
+        static readonly bool MujocoFlipYZ = false;
         static public void AddRigidBody(this GameObject onObj)
         {
             onObj.AddComponent<Rigidbody>();
@@ -16,7 +16,9 @@ namespace MujocoUnity
 
 		static Vector3 RightToLeft(Vector3 rightHanded, bool hackFlipZ = false)
 		{
-    		return new Vector3(-rightHanded.x, rightHanded.z, -rightHanded.y);
+    		// return new Vector3(-rightHanded.x, rightHanded.z, -rightHanded.y);
+    		//return new Vector3(-rightHanded.x, rightHanded.z, rightHanded.y);
+    		return new Vector3(rightHanded.x, rightHanded.z, -rightHanded.y);
 		}
     
     	static char[] _delimiterChars = { ' ', ',', ':', '\t' };

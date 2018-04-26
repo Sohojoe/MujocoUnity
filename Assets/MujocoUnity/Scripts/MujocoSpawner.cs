@@ -765,39 +765,39 @@ namespace MujocoUnity
 					DebugPrint($"--- WARNING: ParseJoint: joint type '{type}' is not implemented. Ignoring ({element.ToString()}");
 					return joints;
 			}
-            Joint existingJoint = parentGeom.Bones
+            Joint existingJoint = childGeom.Bones
                 .SelectMany(x=>x.GetComponents<Joint>())
-                .FirstOrDefault(y=>y.connectedBody == childRidgedBody);
+                .FirstOrDefault(y=>y.connectedBody == parentRidgedBody);
             if (existingJoint) {
                 bone = new GameObject();
-                // bone.transform.SetPositionAndRotation(parentGeom.Geom.transform.position, parentGeom.Geom.transform.rotation);
+                bone.transform.SetPositionAndRotation(childGeom.Geom.transform.position, childGeom.Geom.transform.rotation);
                 // bone.transform.localScale = parentGeom.Geom.transform.localScale;
-                bone.transform.SetPositionAndRotation(childGeom.Geom.transform.position, parentGeom.Geom.transform.rotation);
-                bone.transform.localScale = parentGeom.Geom.transform.localScale;
-                bone.transform.parent = parentGeom.Geom.transform;
+                //bone.transform.SetPositionAndRotation(childGeom.Geom.transform.position, parentGeom.Geom.transform.rotation);
+                bone.transform.localScale = childGeom.Geom.transform.localScale;
+                bone.transform.parent = childGeom.Geom.transform;
                 bone.name = jointName;
                 var boneRidgedBody = bone.AddComponent<Rigidbody>();
                 boneRidgedBody.useGravity = false;
                 joint = bone.AddComponent(jointType) as Joint;
                 // existingBone.GetComponent<Joint>().connectedBody = boneRidgedBody;
                 existingJoint.connectedBody = boneRidgedBody;
-                parentGeom.Bones.Add(bone);
+                childGeom.Bones.Add(bone);
             } else {
                 //var parentJoint = parentGeom.Geom.AddComponent<FixedJoint>();
                 //parentJoint.connectedBody = boneRidgedBody;
-                joint = parentGeom.Geom.AddComponent(jointType) as Joint;
-                if (!parentGeom.Bones.Contains(parentGeom.Geom))
-                    parentGeom.Bones.Add(parentGeom.Geom);
+                joint = childGeom.Geom.AddComponent(jointType) as Joint;
+                if (!childGeom.Bones.Contains(childGeom.Geom))
+                    childGeom.Bones.Add(childGeom.Geom);
             }
 
             Collider boneCollider = null;
             if (bone != null)
-                boneCollider = CopyCollider(bone, parentGeom.Geom);
-            joint.connectedBody = childRidgedBody;
+                boneCollider = CopyCollider(bone, childGeom.Geom);
+            joint.connectedBody = parentRidgedBody;
 
             if(_defaultJoint != null)
-                ApplyClassToJoint(_defaultJoint, joint, parentGeom, body, bone ?? parentGeom.Geom);
-            ApplyClassToJoint(element, joint, parentGeom, body, bone ?? parentGeom.Geom);
+                ApplyClassToJoint(_defaultJoint, joint, childGeom, body, bone ?? childGeom.Geom);
+            ApplyClassToJoint(element, joint, childGeom, body, bone ?? childGeom.Geom);
 
             if (boneCollider != null)
                 Destroy(boneCollider);
@@ -862,8 +862,10 @@ namespace MujocoUnity
                             hingeJoint.useLimits = bool.Parse(attribute.Value);
                         break;
                     case "axis":
-                        var inAxis = MujocoHelper.ParseVector3NoFlipYZ(attribute.Value);
-                        Vector3 axis = new Vector3(-inAxis.x, inAxis.z, -inAxis.y);
+                        var axis = MujocoHelper.ParseAxis(attribute.Value);
+                        //inAxis = parentGeom.Geom.transform.InverseTransformDirection(inAxis);
+                        //Vector3 axis = new Vector3(inAxis.x, inAxis.z, -inAxis.y);
+                        //var axis = MujocoHelper.ParseAxis(attribute.Value);
                         axis = parentGeom.Geom.transform.InverseTransformDirection(axis);
                         joint.axis = axis;
                         break;
@@ -878,8 +880,16 @@ namespace MujocoUnity
                         // }
                         if (_useWorldSpace){
                             var jointPos = MujocoHelper.ParsePosition(attribute.Value);
-                            var localAxis = bone.transform.TransformPoint(jointPos);
-                            joint.anchor = localAxis;
+                            // var jointPos = MujocoHelper.ParseVector3NoFlipYZ(attribute.Value);
+                            // var localAxis = joint.connectedBody.transform.TransformPoint(jointPos);
+                            // var localAxis = joint.connectedBody.transform.TransformDirection(jointPos); //*** 
+                            // var localAxis = joint.connectedBody.transform.InverseTransformDirection(jointPos);
+                            // var localAxis = joint.connectedBody.transform.InverseTransformPoint(jointPos);
+                            // var localAxis = joint.transform.TransformPoint(jointPos);
+                            // var localAxis = joint.transform.TransformDirection(jointPos); //*** 
+                            // var localAxis = joint.transform.InverseTransformDirection(jointPos);
+                            var localAxis = joint.transform.InverseTransformPoint(jointPos);
+                            joint.anchor = localAxis;                            
                         } else {
                             var jointPos = body.transform.position;
                             jointPos -= bone.transform.position;
