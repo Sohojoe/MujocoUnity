@@ -33,8 +33,11 @@ namespace MujocoUnity
         public Vector3 FocalPointRotationVelocity;
         public List<float> JointAngles;
         public List<float> JointVelocity;
-        
 
+        List<System.Tuple<ConfigurableJoint, Transform>> _baseTargetPairs;
+        public List<Quaternion> JointRotations;
+        public List<Vector3> JointAngularVelocities;
+        
 
         bool _externalMode;
 
@@ -66,6 +69,12 @@ namespace MujocoUnity
             qvel = Enumerable.Range(0,qlen).Select(x=>0f).ToList();
             JointAngles = Enumerable.Range(0,MujocoJoints.Count).Select(x=>0f).ToList();
             JointVelocity = Enumerable.Range(0,MujocoJoints.Count).Select(x=>0f).ToList();
+            _baseTargetPairs = MujocoJoints
+                .Select(x=> new System.Tuple<ConfigurableJoint, Transform>(x.TrueBase, x.TrueTarget))
+                .Distinct()
+                .ToList();
+            JointRotations = Enumerable.Range(0,_baseTargetPairs.Count).Select(x=>Quaternion.identity).ToList();
+            JointAngularVelocities = Enumerable.Range(0,_baseTargetPairs.Count).Select(x=>Vector3.zero).ToList();
         }
 
         public void SetMujocoTimestep(float timestep)
@@ -170,6 +179,10 @@ namespace MujocoUnity
             qvel[2] = topRidgedBody.velocity.z;
             for (int i = 0; i < MujocoJoints.Count; i++)
             {
+                // UpdateJointAngle(MujocoJoints[i], dt);
+                // qpos[3+i] = JointAngles[i] = MujocoJoints[i].AngleWithinRange;
+                // qvel[3+i] = JointVelocity[i] = MujocoJoints[i].AngularVelocityPerSecond / 1000;
+
                 var joint = MujocoJoints[i].Joint;
                 // var targ = joint.transform.parent.transform;
                 var targ = joint.transform;
@@ -211,7 +224,22 @@ namespace MujocoUnity
                 }
 
             }
-            
+
+            for (int i = 0; i < _baseTargetPairs.Count; i++)
+            {
+                var x = _baseTargetPairs[i];
+                var baseRot = x.Item1.transform.rotation;
+                var targetRot = x.Item2.rotation;                    
+                var rotation = Quaternion.Inverse(baseRot) * targetRot;
+                JointRotations[i] = rotation;
+
+                var baseAngVel = x.Item1.GetComponent<Rigidbody>().angularVelocity;
+                var targetAngVel = x.Item2.GetComponent<Rigidbody>().angularVelocity;
+                var angVel = baseAngVel-targetAngVel;
+                angVel /= dt;
+                angVel /= 10000f;
+                JointAngularVelocities[i] = angVel;
+            }
         }
 
 		static public void ApplyAction(MujocoJoint mJoint, float? target = null)
@@ -225,6 +253,12 @@ namespace MujocoUnity
                 var t = configurableJoint.targetAngularVelocity;
                 t.x = target.Value * _velocityScaler;
                 configurableJoint.targetAngularVelocity = t;
+                var angX = configurableJoint.angularXDrive;
+                angX.positionSpring = 1f;
+                var scale = mJoint.MaximumForce * Mathf.Pow(Mathf.Abs(target.Value),3);
+                angX.positionDamper = Mathf.Max(1f, scale);
+                angX.maximumForce = Mathf.Max(1f, scale);
+                configurableJoint.angularXDrive = angX;
                 return;
             } else if (hingeJoint == null)
                 return;

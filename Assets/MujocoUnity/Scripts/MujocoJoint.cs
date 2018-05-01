@@ -11,5 +11,8 @@ namespace MujocoUnity
         public Vector2 CtrlRange;
         public bool? CtrlLimited;
         public float? Gear;
+        public ConfigurableJoint TrueBase;
+        public Transform TrueTarget;
+        public float MaximumForce;
     }
 }

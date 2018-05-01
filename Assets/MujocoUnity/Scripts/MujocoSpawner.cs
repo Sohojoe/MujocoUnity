@@ -32,6 +32,7 @@ namespace MujocoUnity
 		XElement _defaultGeom;
 		XElement _defaultMotor;
         XElement _defaultSensor;
+        Dictionary<string, XElement> _jointXDocs;
 
         bool _hasParsed;
         bool _useWorldSpace;
@@ -76,6 +77,7 @@ namespace MujocoUnity
             var name = element.Name.LocalName;
             DebugPrint($"- Begin");
 
+            _jointXDocs = new Dictionary<string, XElement>();
             ParseCompilerOptions(_root);
 
             _defaultJoint = _root.Element("default")?.Element("joint");
@@ -202,7 +204,7 @@ namespace MujocoUnity
                                 DebugPrint($"--*** IGNORING timestep=\"{attribute.Value}\" as UseMujocoTimestep == false");
                             break;
                         case "gravity":
-                            Physics.gravity = MujocoHelper.ParseAxis(attribute.Value);
+                            Physics.gravity = MujocoHelper.ParsePosition(attribute.Value);
                             break;
                         default:
                             DebugPrint($"*** MISSING --> {name}.{attribute.Name.LocalName}");
@@ -457,7 +459,6 @@ namespace MujocoUnity
                     var start = MujocoHelper.ParseFrom(fromto);
                     var end = MujocoHelper.ParseTo(fromto);
                     var offset = end - start;
-                    // geom.Lenght = Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.y), Mathf.Abs(offset.z));
                     geom.Lenght = offset.magnitude;//
                     geom.Size = size;
                     geom.Lenght3D = offset;//new Vector3(offset.x, offset.z, offset.y);
@@ -733,6 +734,7 @@ namespace MujocoUnity
         //GameObject parentGeom, GameObject parentBody)
 		List<KeyValuePair<string, Joint>> ParseJoint(XElement xdoc, GeomItem parentGeom, GeomItem childGeom, GameObject body)
 		{
+            _jointXDocs.Add(xdoc.Attribute("name").Value, xdoc);
 			var joints = new List<KeyValuePair<string, Joint>>();
 
             GameObject bone = null;
@@ -838,7 +840,7 @@ namespace MujocoUnity
         }
 
         
-        void ApplyClassToJoint(XElement classElement, Joint joint, GeomItem parentGeom, GameObject body, GameObject bone)
+        void ApplyClassToJoint(XElement classElement, Joint joint, GeomItem baseGeom, GameObject body, GameObject bone)
         {
 			HingeJoint hingeJoint = joint as HingeJoint;
             FixedJoint fixedJoint = joint as FixedJoint;
@@ -863,10 +865,7 @@ namespace MujocoUnity
                         break;
                     case "axis":
                         var axis = MujocoHelper.ParseAxis(attribute.Value);
-                        //inAxis = parentGeom.Geom.transform.InverseTransformDirection(inAxis);
-                        //Vector3 axis = new Vector3(inAxis.x, inAxis.z, -inAxis.y);
-                        //var axis = MujocoHelper.ParseAxis(attribute.Value);
-                        axis = parentGeom.Geom.transform.InverseTransformDirection(axis);
+                        axis = baseGeom.Geom.transform.InverseTransformDirection(axis);
                         joint.axis = axis;
                         break;
                     case "name":
@@ -875,19 +874,8 @@ namespace MujocoUnity
                         break;
                     case "pos":
                         Vector3 jointOffset = MujocoHelper.ParsePosition(attribute.Value);
-                        // if (!parentGeom.Lenght.HasValue){
-                        //     return;
-                        // }
                         if (_useWorldSpace){
                             var jointPos = MujocoHelper.ParsePosition(attribute.Value);
-                            // var jointPos = MujocoHelper.ParseVector3NoFlipYZ(attribute.Value);
-                            // var localAxis = joint.connectedBody.transform.TransformPoint(jointPos);
-                            // var localAxis = joint.connectedBody.transform.TransformDirection(jointPos); //*** 
-                            // var localAxis = joint.connectedBody.transform.InverseTransformDirection(jointPos);
-                            // var localAxis = joint.connectedBody.transform.InverseTransformPoint(jointPos);
-                            // var localAxis = joint.transform.TransformPoint(jointPos);
-                            // var localAxis = joint.transform.TransformDirection(jointPos); //*** 
-                            // var localAxis = joint.transform.InverseTransformDirection(jointPos);
                             var localAxis = joint.transform.InverseTransformPoint(jointPos);
                             joint.anchor = localAxis;                            
                         } else {
@@ -942,6 +930,25 @@ namespace MujocoUnity
                 hingeJoint.limits = limits;
             }
         }
+        static Vector3 GetLocalOrthoDirection(Transform transform, Vector3 worldDir) {
+			worldDir = worldDir.normalized;
+			
+			float dotX = Vector3.Dot(worldDir, transform.right);
+			float dotY = Vector3.Dot(worldDir, transform.up);
+			float dotZ = Vector3.Dot(worldDir, transform.forward);
+			
+			float absDotX = Mathf.Abs(dotX);
+			float absDotY = Mathf.Abs(dotY);
+			float absDotZ = Mathf.Abs(dotZ);
+			
+			Vector3 orthoDirection = Vector3.right;
+			if (absDotY > absDotX && absDotY > absDotZ) orthoDirection = Vector3.up;
+			if (absDotZ > absDotX && absDotZ > absDotY) orthoDirection = Vector3.forward;
+			
+			if (Vector3.Dot(worldDir, transform.rotation * orthoDirection) < 0f) orthoDirection = -orthoDirection;
+			
+			return orthoDirection;
+		}
 
 
 		List<MujocoJoint>  ParseGears(XElement xdoc, List<KeyValuePair<string, Joint>>  joints)
@@ -956,7 +963,52 @@ namespace MujocoUnity
             {
                 mujocoJoints.AddRange(ParseGear(element, joints));
             }
+            foreach (var mujocoJoint in mujocoJoints)
+            {
+                mujocoJoint.TrueBase = FindTrueBase(mujocoJoint.Joint, mujocoJoints);
+                mujocoJoint.TrueTarget = FindTrueTarget(mujocoJoint.Joint, mujocoJoints);
+                mujocoJoint.MaximumForce = (mujocoJoint.Joint as ConfigurableJoint).angularXDrive.maximumForce;
+
+                Vector3 worldSwingAxis = mujocoJoint.Joint.axis;
+                Vector3 axis2 = GetLocalOrthoDirection(mujocoJoint.TrueTarget.transform, worldSwingAxis);
+                Vector3 twistAxis = GetLocalOrthoDirection(mujocoJoint.TrueTarget.transform, mujocoJoint.TrueTarget.transform.position - mujocoJoint.TrueBase.connectedBody.transform.position);
+                Vector3 secondaryAxis = Vector3.Cross(axis2, twistAxis);
+                (mujocoJoint.Joint as ConfigurableJoint).secondaryAxis = secondaryAxis;
+            }
             return mujocoJoints;
+        }
+        ConfigurableJoint FindTrueBase (Joint joint, List<MujocoJoint> mJoints)
+        {
+            ConfigurableJoint configurableJoint = joint as ConfigurableJoint;
+            var rb = configurableJoint.GetComponent<Rigidbody>();
+            if (rb.useGravity)
+                return configurableJoint;
+            ConfigurableJoint parentRb = mJoints
+                .Select(x=>x.Joint)
+                .First(x=>x.connectedBody == rb)
+                as ConfigurableJoint;
+            return FindTrueBase(parentRb, mJoints);
+        }
+        // Transform FindTrueBase (Joint joint, List<MujocoJoint> mJoints)
+        // {
+        //     var rb = joint.GetComponent<Rigidbody>();
+        //     if (rb.useGravity)
+        //         return rb.transform;
+        //     var parentRb = mJoints
+        //         .Select(x=>x.Joint)
+        //         .First(x=>x.connectedBody == rb);
+        //     return FindTrueBase(parentRb, mJoints);
+        // }
+        Transform FindTrueTarget (Joint joint, List<MujocoJoint> mJoints)
+        {
+            var targetRB = joint.connectedBody;
+            var rb = joint.GetComponent<Rigidbody>();
+            if (targetRB.useGravity)
+                return targetRB.transform;
+            var target = targetRB.GetComponent<ConfigurableJoint>();
+            if (target == null)
+                return targetRB.transform;
+            return FindTrueTarget(target, mJoints);
         }
 
 		List<MujocoJoint> ParseGear(XElement element, List<KeyValuePair<string, Joint>>  joints)
