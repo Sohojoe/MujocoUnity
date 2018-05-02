@@ -249,7 +249,7 @@ namespace MujocoUnity
             if (configurableJoint != null){
                 if (!target.HasValue) // handle random
                     target = Random.value * 2 - 1;
-                target = Mathf.Clamp(target.Value, -1f, 1f);
+                target = Mathf.Clamp(target.Value, -3f, 3f);
                 var t = configurableJoint.targetAngularVelocity;
                 t.x = target.Value * _velocityScaler;
                 configurableJoint.targetAngularVelocity = t;

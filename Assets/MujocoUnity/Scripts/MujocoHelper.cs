@@ -6,7 +6,7 @@ namespace MujocoUnity
 {
     public static class MujocoHelper
     {
-        static readonly bool FlipMujocoX = true;
+        static readonly bool FlipMujocoX = false;
         static public void AddRigidBody(this GameObject onObj)
         {
             onObj.AddComponent<Rigidbody>();

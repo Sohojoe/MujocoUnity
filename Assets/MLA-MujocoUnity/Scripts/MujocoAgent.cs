@@ -125,8 +125,8 @@ namespace MlaMujocoUnity {
                     _observations = Observations_Default;
                     break;
                 case "a_oai_humanoid-v0":
-                    _stepReward = StepReward_OaiHumanoidRun;
-                    //_stepReward = StepReward_OaiHumanoidStand;
+                    // _stepReward = StepReward_OaiHumanoidRun;
+                    _stepReward = StepReward_OaiHumanoidStand;
                     _terminate = Terminate_OnNonFootHitTerrain;
                     _observations = Observations_Humanoid;
                     _bodyParts["pelvis"] = GetComponentsInChildren<Rigidbody>().FirstOrDefault(x=>x.name=="butt");
@@ -200,7 +200,9 @@ namespace MlaMujocoUnity {
             AddVectorObs(shoulders.transform.forward); // gyroscope 
 
             AddVectorObs(_mujocoController.SensorIsInTouch);
-            AddVectorObs(_mujocoController.JointAngles);
+            //AddVectorObs(_mujocoController.JointAngles);
+            //AddVectorObs(_mujocoController.JointVelocity);
+            _mujocoController.JointRotations.ForEach(x=>AddVectorObs(x));
             AddVectorObs(_mujocoController.JointVelocity);
         }
         void Observations_Default()
@@ -239,7 +241,7 @@ namespace MlaMujocoUnity {
         public override void AgentAction(float[] vectorAction, string textAction)
         {
             _actions = vectorAction
-                .Select(x=>Mathf.Clamp(x, -1, 1f))
+                .Select(x=>Mathf.Clamp(x, -3, 3f)/3)
                 .ToList();
             //KillJointPower(new []{"shoulder", "elbow"}); // HACK
             // if (ShowMonitor)
@@ -255,8 +257,8 @@ namespace MlaMujocoUnity {
             if (done)
             {
                 Done();
-                var reward = 0;
-                // var reward = -1000f;
+                //var reward = 0;
+                var reward = -100f;
                 SetReward(reward);
             }
             if (!IsDone())
@@ -408,19 +410,25 @@ namespace MlaMujocoUnity {
             float heightPenality = GetHeightPenality(1.2f);
             float shouldersUprightBonus = GetUprightBonus("shoulders") / 2;
             float pelvisUprightBonus = GetUprightBonus("pelvis") / 2;
-            float effortSquare = GetEffort();
-            var effortSquarePenality = 0.02f * (float)effortSquare;
-            float effortSum = GetEffortSum();
-            float effortSumPenality = 0.05f * (float)effortSum;
-            effortSumPenality =  Mathf.Clamp(effortSumPenality, 0f, 2f);
+            // float effortSquare = GetEffort();
+            // var effortSquarePenality = 0.02f * (float)effortSquare;
+            // float effortSum = GetEffortSum();
+            // float effortSumPenality = 0.05f * (float)effortSum;
+            // effortSumPenality =  Mathf.Clamp(effortSumPenality, 0f, 2f);
+            float effort = GetEffort();
+            var effortPenality = 0.02f * (float)effort;
+            var armPenalty = 0.1f * (float)GetHumanoidArmEffort();
 			var reward = 0 
                 + shouldersUprightBonus
                 + pelvisUprightBonus
                 - heightPenality
-                - effortSquarePenality
-			    - effortSumPenality;
+                - effortPenality
+                - armPenalty;
+                // - effortSquarePenality
+			    // - effortSumPenality;
             if (ShowMonitor) {
-                var hist = new []{reward, shouldersUprightBonus, pelvisUprightBonus,- heightPenality,-effortSquarePenality,-effortSumPenality}.ToList();
+                //var hist = new []{reward, shouldersUprightBonus, pelvisUprightBonus,- heightPenality,-effortSquarePenality,-effortSumPenality}.ToList();
+                var hist = new []{reward, shouldersUprightBonus, pelvisUprightBonus,- heightPenality,-effortPenality,-armPenalty}.ToList();
                 Monitor.Log("rewardHist", hist, MonitorType.hist);
                 //Monitor.Log("effortPenality", effortPenality, MonitorType.text);
             }
