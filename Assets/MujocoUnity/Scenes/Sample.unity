@@ -326,7 +326,7 @@ Prefab:
     - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
         type: 2}
       propertyPath: CollisionLayer.m_Bits
-      value: 256
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
         type: 2}
@@ -406,6 +406,41 @@ Prefab:
         type: 2}
       propertyPath: SpawnOnStart
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: ButtCollisionLayer.m_Bits
+      value: 1024
+      objectReference: {fileID: 0}
+    - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: ButtLeftCollisionLayer.m_Bits
+      value: 2048
+      objectReference: {fileID: 0}
+    - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: ButtRightCollisionLayer.m_Bits
+      value: 4096
+      objectReference: {fileID: 0}
+    - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: DefaultCollisionLayer.m_Bits
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: AplusB_CollisionLayer.m_Bits
+      value: 1024
+      objectReference: {fileID: 0}
+    - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: A_CollisionLayer.m_Bits
+      value: 2048
+      objectReference: {fileID: 0}
+    - target: {fileID: 114930587501614892, guid: 41661c22107be4a20af7212d6eb0d729,
+        type: 2}
+      propertyPath: B_CollisionLayer.m_Bits
+      value: 4096
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 41661c22107be4a20af7212d6eb0d729, type: 2}

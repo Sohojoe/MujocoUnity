@@ -15,9 +15,9 @@ TagManager:
   - 
   - 
   - 
-  - mujoco
-  - 
-  - 
+  - mujoco_a+b
+  - mujoco_a
+  - mujoco_b
   - 
   - 
   - 

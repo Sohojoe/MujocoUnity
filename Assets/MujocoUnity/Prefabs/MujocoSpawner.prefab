@@ -53,12 +53,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MujocoJoints: []
+  MujocoSensors: []
   CameraTarget: {fileID: 0}
   applyRandomToAll: 0
   applyTargets: 0
   targets: []
   qpos: []
+  qglobpos: []
   qvel: []
+  OnSensor: []
+  SensorIsInTouch: []
+  MujocoTimeStep: 0
+  _focalPoint: {fileID: 0}
+  FocalPointPosition: {x: 0, y: 0, z: 0}
+  FocalPointPositionVelocity: {x: 0, y: 0, z: 0}
+  FocalPointRotation: {x: 0, y: 0, z: 0}
+  FocalPointEulerAngles: {x: 0, y: 0, z: 0}
+  FocalPointRotationVelocity: {x: 0, y: 0, z: 0}
+  JointAngles: []
+  JointVelocity: []
+  JointRotations: []
+  JointAngularVelocities: []
 --- !u!114 &114930587501614892
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -73,12 +88,22 @@ MonoBehaviour:
   MujocoXml: {fileID: 0}
   Material: {fileID: 2100000, guid: 9013613e105254620b29c7301046af30, type: 2}
   PhysicMaterial: {fileID: 13400000, guid: 38b7ea504254a4fa986e42a7bb16c8df, type: 2}
-  CollisionLayer:
+  DefaultCollisionLayer:
+    serializedVersion: 2
+    m_Bits: 1
+  AplusB_CollisionLayer:
     serializedVersion: 2
     m_Bits: 1024
+  A_CollisionLayer:
+    serializedVersion: 2
+    m_Bits: 2048
+  B_CollisionLayer:
+    serializedVersion: 2
+    m_Bits: 4096
   UseMujocoTimestep: 1
   DebugOutput: 0
   GravityOff: 0
+  SpawnOnStart: 0
   ListOf2dScripts:
   - half_cheetah
   - hopper

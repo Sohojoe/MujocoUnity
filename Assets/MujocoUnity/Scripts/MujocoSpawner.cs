@@ -13,7 +13,10 @@ namespace MujocoUnity
 		public TextAsset MujocoXml;
         public Material Material;
         public PhysicMaterial PhysicMaterial;
-        public LayerMask CollisionLayer; // used to disable colliding with self
+        public LayerMask DefaultCollisionLayer; // used to disable colliding with self
+        public LayerMask AplusB_CollisionLayer; // does not collide with A or B
+        public LayerMask A_CollisionLayer; 
+        public LayerMask B_CollisionLayer; 
         public bool UseMujocoTimestep; // use option timestep=xxx to set physics timestep
         public bool DebugOutput;
         public bool GravityOff;
@@ -129,19 +132,19 @@ namespace MujocoUnity
                 {
                     item.material = PhysicMaterial;
                 }
-            var layer = (int) Mathf.Log(CollisionLayer.value, 2);
-            if (CollisionLayer != null)
-                foreach (var item in GetComponentsInChildren<Transform>())
-                {
-                    item.gameObject.layer = layer;
-                }
-            foreach (var item in GetComponentsInChildren<Joint>()) 
-                item.enablePreprocessing = false;
-            if (ListOf2dScripts.FirstOrDefault(x=>x == this.name) != null)
-                foreach (var item in GetComponentsInChildren<Rigidbody>())
-                {
-                    item.constraints = item.constraints | RigidbodyConstraints.FreezePositionZ;
-                }
+            foreach (var item in GetComponentsInChildren<Collider>())
+            {
+                // HACK - names should be in the xml
+                if (item.name == "butt" || item.name == "torso1")
+                    item.gameObject.layer = (int) Mathf.Log(AplusB_CollisionLayer.value, 2);
+                else if (item.name.Contains("right_thigh") || item.name == "uwaist")
+                    item.gameObject.layer = (int) Mathf.Log(A_CollisionLayer.value, 2);
+                else if (item.name.Contains("left_thigh"))
+                    item.gameObject.layer = (int) Mathf.Log(B_CollisionLayer.value, 2);
+                else
+                    item.gameObject.layer = (int) Mathf.Log(DefaultCollisionLayer.value, 2);
+
+            }
 
             // // debug helpers
             // foreach (var item in mujocoJoints)

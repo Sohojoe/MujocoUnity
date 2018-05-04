@@ -126,9 +126,9 @@ namespace MlaMujocoUnity {
                     _observations = Observations_Default;
                     break;
                 case "a_oai_humanoid-v0":
-                    // _stepReward = StepReward_OaiHumanoidRun;
+                    _stepReward = StepReward_OaiHumanoidRun;
                     // _stepReward = StepReward_OaiHumanoidStand;
-                    _stepReward = StepReward_OaiHumanoidPureRun;
+                    // _stepReward = StepReward_OaiHumanoidPureRun;
                     _terminate = Terminate_OnNonFootHitTerrain;
                     _observations = Observations_Humanoid;
                     _bodyParts["pelvis"] = GetComponentsInChildren<Rigidbody>().FirstOrDefault(x=>x.name=="butt");
@@ -470,16 +470,17 @@ namespace MlaMujocoUnity {
             float shouldersUprightBonus = GetUprightBonus("shoulders") / 2;
             float pelvisUprightBonus = GetUprightBonus("pelvis") / 2;
             float effort = GetEffort();
+            // var effortPenality = 0.1f * (float)effort;
             var effortPenality = 0.02f * (float)effort;
-            var armPenalty = 0.1f * (float)GetHumanoidArmEffort();
+            // var armPenalty = 0.1f * (float)GetHumanoidArmEffort();
 			var reward = velocity 
                 + shouldersUprightBonus
                 + pelvisUprightBonus
                 - heightPenality
-			    - effortPenality
-                - armPenalty;
+			    - effortPenality;
+                // - armPenalty;
             if (ShowMonitor) {
-                var hist = new []{reward,velocity, shouldersUprightBonus, pelvisUprightBonus,- heightPenality,-effortPenality, -armPenalty}.ToList();
+                var hist = new []{reward,velocity, shouldersUprightBonus, pelvisUprightBonus,- heightPenality,-effortPenality}.ToList();
                 Monitor.Log("rewardHist", hist, MonitorType.hist);
             }
 			return reward;            
