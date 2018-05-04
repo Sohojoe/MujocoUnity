@@ -30,6 +30,7 @@ namespace MlaMujocoUnity {
         Func<float> _stepReward;
         Action _observations;
         Dictionary<string,Rigidbody> _bodyParts = new Dictionary<string,Rigidbody>();
+        Dictionary<string,Quaternion> _bodyPartsToFocalRoation = new Dictionary<string,Quaternion>();
 
         int _frameSkip = 5; // number of physics frames to skip between training
         int _nSteps = 1000; // total number of training steps
@@ -126,7 +127,8 @@ namespace MlaMujocoUnity {
                     break;
                 case "a_oai_humanoid-v0":
                     // _stepReward = StepReward_OaiHumanoidRun;
-                    _stepReward = StepReward_OaiHumanoidStand;
+                    // _stepReward = StepReward_OaiHumanoidStand;
+                    _stepReward = StepReward_OaiHumanoidPureRun;
                     _terminate = Terminate_OnNonFootHitTerrain;
                     _observations = Observations_Humanoid;
                     _bodyParts["pelvis"] = GetComponentsInChildren<Rigidbody>().FirstOrDefault(x=>x.name=="butt");
@@ -136,6 +138,19 @@ namespace MlaMujocoUnity {
                 case "a_oai_half_cheetah-v0":
                 default:
                     throw new NotImplementedException();
+            }
+            // set body part directions
+            foreach (var bodyPart in _bodyParts)
+            {
+                var name = bodyPart.Key;
+                var rigidbody = bodyPart.Value;
+
+                // find up
+                var focalPoint = rigidbody.position;
+                focalPoint.x += 10;
+                var focalPointRotation = rigidbody.rotation;
+                focalPointRotation.SetLookRotation(focalPoint - rigidbody.position);
+                _bodyPartsToFocalRoation[name] = focalPointRotation;
             }
         }
 			// AddRewardFunc("a_oai_half_cheetah-v0", StepReward_VelocityIfNewMaxPosX, TerminalReward_NegNonFoot);
@@ -284,7 +299,6 @@ namespace MlaMujocoUnity {
             float lowestFoot = 0f;
             if(feetYpos!=null && feetYpos.Count != 0)
                 lowestFoot = feetYpos[0];
-            var qpos2 = (GetAngleFromUp() % 180 ) / 180;
 			var height = _mujocoController.FocalPointPosition.y - lowestFoot;
             return height;
         }
@@ -293,7 +307,7 @@ namespace MlaMujocoUnity {
 			var dt = Time.fixedDeltaTime;
 			var rawVelocity = _mujocoController.FocalPointPositionVelocity.x;
             var maxSpeed = 4f; // meters per second
-            rawVelocity = Mathf.Clamp(rawVelocity,-maxSpeed,maxSpeed);
+            //rawVelocity = Mathf.Clamp(rawVelocity,-maxSpeed,maxSpeed);
 			var velocity = rawVelocity / maxSpeed;
             if (ShowMonitor) {
                 Monitor.Log("rawVelocity", rawVelocity, MonitorType.text);
@@ -311,11 +325,12 @@ namespace MlaMujocoUnity {
         }
         float GetUprightBonus(string bodyPart)
         {
-            var angleFromUp = Vector3.Angle(_bodyParts[bodyPart].transform.forward, Vector3.up);
+            var toFocalAngle = _bodyPartsToFocalRoation[bodyPart] * -_bodyParts[bodyPart].transform.forward;
+            var angleFromUp = Vector3.Angle(toFocalAngle, Vector3.up);
             var qpos2 = (angleFromUp % 180 ) / 180;
             var uprightBonus = 0.5f * (2 - (Mathf.Abs(qpos2)*2)-1);
-            // if (ShowMonitor)
-                // Monitor.Log($"upright{bodyPart}Bonus", uprightBonus, MonitorType.text);
+            if (ShowMonitor)
+                Monitor.Log($"upright[{bodyPart}] Bonus", uprightBonus, MonitorType.text);
             return uprightBonus;
         }
         float GetHeightPenality(float maxHeight)
@@ -405,35 +420,6 @@ namespace MlaMujocoUnity {
 			return reward;
 		}
         
-        float StepReward_OaiHumanoidStand()
-        {
-            float heightPenality = GetHeightPenality(1.2f);
-            float shouldersUprightBonus = GetUprightBonus("shoulders") / 2;
-            float pelvisUprightBonus = GetUprightBonus("pelvis") / 2;
-            // float effortSquare = GetEffort();
-            // var effortSquarePenality = 0.02f * (float)effortSquare;
-            // float effortSum = GetEffortSum();
-            // float effortSumPenality = 0.05f * (float)effortSum;
-            // effortSumPenality =  Mathf.Clamp(effortSumPenality, 0f, 2f);
-            float effort = GetEffort();
-            var effortPenality = 0.02f * (float)effort;
-            var armPenalty = 0.1f * (float)GetHumanoidArmEffort();
-			var reward = 0 
-                + shouldersUprightBonus
-                + pelvisUprightBonus
-                - heightPenality
-                - effortPenality
-                - armPenalty;
-                // - effortSquarePenality
-			    // - effortSumPenality;
-            if (ShowMonitor) {
-                //var hist = new []{reward, shouldersUprightBonus, pelvisUprightBonus,- heightPenality,-effortSquarePenality,-effortSumPenality}.ToList();
-                var hist = new []{reward, shouldersUprightBonus, pelvisUprightBonus,- heightPenality,-effortPenality,-armPenalty}.ToList();
-                Monitor.Log("rewardHist", hist, MonitorType.hist);
-                //Monitor.Log("effortPenality", effortPenality, MonitorType.text);
-            }
-			return reward;  
-        }
         float GymHumanoidReward()
         {
             // alive_bonus = 5.0
@@ -456,6 +442,26 @@ namespace MlaMujocoUnity {
             }
             return reward;
         }
+        float StepReward_OaiHumanoidStand()
+        {
+            float heightPenality = GetHeightPenality(1.2f);
+            float shouldersUprightBonus = GetUprightBonus("shoulders") / 2;
+            float pelvisUprightBonus = GetUprightBonus("pelvis") / 2;
+            float effort = GetEffort();
+            var effortPenality = 0.02f * (float)effort;
+            var armPenalty = 0.1f * (float)GetHumanoidArmEffort();
+			var reward = 0f 
+                + shouldersUprightBonus
+                + pelvisUprightBonus
+                - heightPenality
+			    - effortPenality
+                - armPenalty;
+            if (ShowMonitor) {
+                var hist = new []{reward, shouldersUprightBonus, pelvisUprightBonus,- heightPenality,-effortPenality, -armPenalty}.ToList();
+                Monitor.Log("rewardHist", hist, MonitorType.hist);
+            }
+			return reward;      
+        }
         
         float StepReward_OaiHumanoidRun()
         {
@@ -475,7 +481,19 @@ namespace MlaMujocoUnity {
             if (ShowMonitor) {
                 var hist = new []{reward,velocity, shouldersUprightBonus, pelvisUprightBonus,- heightPenality,-effortPenality, -armPenalty}.ToList();
                 Monitor.Log("rewardHist", hist, MonitorType.hist);
-                //Monitor.Log("effortPenality", effortPenality, MonitorType.text);
+            }
+			return reward;            
+        }
+        float StepReward_OaiHumanoidPureRun()
+        {
+            float velocity = GetVelocity();
+            float effort = GetEffort();
+            var effortPenality = 0.1f * (float)effort;
+			var reward = velocity 
+			    - effortPenality;
+            if (ShowMonitor) {
+                var hist = new []{reward,velocity, -effortPenality}.ToList();
+                Monitor.Log("rewardHist", hist, MonitorType.hist);
             }
 			return reward;            
         }
