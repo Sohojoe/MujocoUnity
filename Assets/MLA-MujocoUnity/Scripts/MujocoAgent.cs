@@ -25,7 +25,7 @@ namespace MlaMujocoUnity {
         MujocoController _mujocoController;
         bool _footHitTerrain;
         bool _nonFootHitTerrain;
-        List<float> _actions;
+        public List<float> Actions;
         Func<bool> _terminate;
         Func<float> _stepReward;
         Action _observations;
@@ -260,14 +260,14 @@ namespace MlaMujocoUnity {
 
         public override void AgentAction(float[] vectorAction, string textAction)
         {
-            _actions = vectorAction
+            Actions = vectorAction
                 .Select(x=>Mathf.Clamp(x, -3, 3f)/3)
                 .ToList();
             //KillJointPower(new []{"shoulder", "elbow"}); // HACK
             // if (ShowMonitor)
             //     Monitor.Log("actions", _actions, MonitorType.hist);
             for (int i = 0; i < _mujocoController.MujocoJoints.Count; i++) {
-				var inp = (float)_actions[i];
+				var inp = (float)Actions[i];
 				MujocoController.ApplyAction(_mujocoController.MujocoJoints[i], inp);
 			}
             _mujocoController.UpdateFromExternalComponent();
@@ -403,7 +403,7 @@ namespace MlaMujocoUnity {
                         .Where(x=>x.JointName.ToLowerInvariant().Contains(hint.ToLowerInvariant()))
                 ).ToList();
             foreach (var joint in mJoints)
-                _actions[_mujocoController.MujocoJoints.IndexOf(joint)] = 0f;
+                Actions[_mujocoController.MujocoJoints.IndexOf(joint)] = 0f;
         }
         float GetHumanoidArmEffort()
         {
@@ -411,7 +411,7 @@ namespace MlaMujocoUnity {
                 .Where(x=>x.JointName.ToLowerInvariant().Contains("shoulder") || x.JointName.ToLowerInvariant().Contains("elbow"))
                 .ToList();
             var effort = mJoints
-                .Select(x=>_actions[_mujocoController.MujocoJoints.IndexOf(x)])
+                .Select(x=>Actions[_mujocoController.MujocoJoints.IndexOf(x)])
 				.Select(x=>Mathf.Pow(Mathf.Abs(x),2))
 				.Sum();
             return effort;            
@@ -419,7 +419,7 @@ namespace MlaMujocoUnity {
         float GetEffort(string[] ignorJoints = null)
         {
             double effort = 0;
-            for (int i = 0; i < _actions.Count; i++)
+            for (int i = 0; i < Actions.Count; i++)
             {
                 var name = _mujocoController.MujocoJoints[i].JointName;
                 var jointEffort = Mathf.Pow(Mathf.Abs(_actions[i]),2);
@@ -436,14 +436,14 @@ namespace MlaMujocoUnity {
         }
         float GetEffortSum()
         {
-			var effort = _actions
+			var effort = Actions
 				.Select(x=>Mathf.Abs(x))
 				.Sum();
             return effort;
         }
         float GetEffortMean()
         {
-			var effort = _actions
+			var effort = Actions
 				.Average();
             return effort;
         }
