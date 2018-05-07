@@ -34,6 +34,10 @@ namespace MlaMujocoUnity {
 
         int _frameSkip = 5; // number of physics frames to skip between training
         int _nSteps = 1000; // total number of training steps
+        List<float> _lastSenorState;
+        float _nextPhaseBonus;
+        float _phaseBonus;
+        int _phase;
 
         void Start () {
             rBody = GetComponent<Rigidbody>();
@@ -66,6 +70,10 @@ namespace MlaMujocoUnity {
                 _internalLow[offset+0] = -1;//-10;
                 _internalHigh[offset+0] = 1;//10;
             }    
+            _lastSenorState = Enumerable.Repeat<float>(0f, _numSensors).ToList();
+            _phase = 0;
+            _phaseBonus = 0f;
+            _nextPhaseBonus = 0f;
             this.brain = GameObject.Find("MujocoBrain").GetComponent<Brain>();
         }
 
@@ -556,10 +564,11 @@ namespace MlaMujocoUnity {
             float limbPenalty = leftThighPenality + rightThighPenality + leftUarmPenality + rightUarmPenality;
             limbPenalty = Mathf.Min(0.5f, limbPenalty);
             // GetDirectionDebug("right_thigh");
-            float rightThighBonus = GetUprightBonus("right_thigh");
-            float leftThighBonus = GetUprightBonus("left_thigh");
-            float thighBonus = Mathf.Abs(Mathf.Max(leftThighBonus, rightThighBonus));
-            thighBonus = Mathf.Min(0.25f, thighBonus  / 2);
+            //float rightThighBonus = GetUprightBonus("right_thigh");
+            //float leftThighBonus = GetUprightBonus("left_thigh");
+            //float thighBonus = Mathf.Abs(Mathf.Max(leftThighBonus, rightThighBonus));
+            //thighBonus = Mathf.Min(0.25f, thighBonus  / 2);
+            float thighBonus = GetPhaseBonus() / 2;
             var jointsAtLimitPenality = GetJointsAtLimitPenality();
             float effort = GetEffort(new string []{"right_hip_y", "right_knee", "left_hip_y", "left_knee"});
             var effortPenality = 0.5f * (float)effort;
@@ -584,6 +593,46 @@ namespace MlaMujocoUnity {
             }
 			return reward;            
         }
+        float GetPhaseBonus()
+        {
+            bool noPhaseChange = true;
+            for (int i = 0; i < _mujocoController.SensorIsInTouch.Count; i++)
+            {
+                noPhaseChange = noPhaseChange && _mujocoController.SensorIsInTouch[i] == _lastSenorState[i];
+                _lastSenorState[i] = _mujocoController.SensorIsInTouch[i];
+            }
+            // special case: no feed in air
+            if (_mujocoController.SensorIsInTouch.Sum() == 0f)
+                noPhaseChange = true;
+            // special case: both feed down
+            if (_mujocoController.SensorIsInTouch.Sum() == 2f) {
+                _phaseBonus = 0f;
+                _nextPhaseBonus = 0;
+                return _phaseBonus;
+            }
+            
+            if (noPhaseChange){
+                // check if this is next best angle
+                if (_phase == 1)
+                    _nextPhaseBonus = Mathf.Max(_phaseBonus, GetUprightBonus("left_thigh"));
+                else if (_phase == 2)
+                    _nextPhaseBonus = Mathf.Max(_phaseBonus, GetUprightBonus("right_thigh"));
+                return _phaseBonus;
+            }
+
+            // new phase
+            bool invalidPhase = false;
+            bool isLeftPhase = _mujocoController.SensorIsInTouch[0] != 0f;
+            if (_phase == 1 && isLeftPhase)
+                invalidPhase = true;
+            else if (_phase == 2 && !isLeftPhase)
+                invalidPhase = true;
+            _phase = isLeftPhase ? 1 : 2;
+            _phaseBonus = invalidPhase ? 0f : _nextPhaseBonus;
+            _nextPhaseBonus = 0;
+            return _phaseBonus;
+        }
+
         float StepReward_OaiHumanoidPureRun()
         {
             float velocity = GetVelocity();
