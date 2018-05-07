@@ -133,6 +133,11 @@ namespace MlaMujocoUnity {
                     _observations = Observations_Humanoid;
                     _bodyParts["pelvis"] = GetComponentsInChildren<Rigidbody>().FirstOrDefault(x=>x.name=="butt");
                     _bodyParts["shoulders"] = GetComponentsInChildren<Rigidbody>().FirstOrDefault(x=>x.name=="torso1");
+                    _bodyParts["head"] = GetComponentsInChildren<Rigidbody>().FirstOrDefault(x=>x.name=="head");
+                    _bodyParts["left_thigh"] = GetComponentsInChildren<Rigidbody>().FirstOrDefault(x=>x.name=="left_thigh1");
+                    _bodyParts["right_thigh"] = GetComponentsInChildren<Rigidbody>().FirstOrDefault(x=>x.name=="right_thigh1");
+                    _bodyParts["left_uarm"] = GetComponentsInChildren<Rigidbody>().FirstOrDefault(x=>x.name=="left_uarm1");
+                    _bodyParts["right_uarm"] = GetComponentsInChildren<Rigidbody>().FirstOrDefault(x=>x.name=="right_uarm1");
                     break;
                 case "a_ant-v0":
                 case "a_oai_half_cheetah-v0":
@@ -310,8 +315,9 @@ namespace MlaMujocoUnity {
             //rawVelocity = Mathf.Clamp(rawVelocity,-maxSpeed,maxSpeed);
 			var velocity = rawVelocity / maxSpeed;
             if (ShowMonitor) {
-                Monitor.Log("rawVelocity", rawVelocity, MonitorType.text);
-                Monitor.Log("velocity", velocity, MonitorType.text);
+                Monitor.Log("MPH: ", rawVelocity * 2.236936f, MonitorType.text);
+                // Monitor.Log("rawVelocity", rawVelocity, MonitorType.text);
+                // Monitor.Log("velocity", velocity, MonitorType.text);
             }
             return velocity;
         }
@@ -329,19 +335,64 @@ namespace MlaMujocoUnity {
             var angleFromUp = Vector3.Angle(toFocalAngle, Vector3.up);
             var qpos2 = (angleFromUp % 180 ) / 180;
             var uprightBonus = 0.5f * (2 - (Mathf.Abs(qpos2)*2)-1);
-            if (ShowMonitor)
-                Monitor.Log($"upright[{bodyPart}] Bonus", uprightBonus, MonitorType.text);
+            // if (ShowMonitor)
+            //     Monitor.Log($"upright[{bodyPart}] Bonus", uprightBonus, MonitorType.text);
             return uprightBonus;
+        }
+
+        float GetDirectionBonus(string bodyPart, Vector3 direction, float maxBonus = 0.5f)
+        {
+            var toFocalAngle = _bodyPartsToFocalRoation[bodyPart] * _bodyParts[bodyPart].transform.right;
+            var angle = Vector3.Angle(toFocalAngle, direction);
+            var qpos2 = (angle % 180 ) / 180;
+            var bonus = maxBonus * (2 - (Mathf.Abs(qpos2)*2)-1);
+            return bonus;
+        }
+        void GetDirectionDebug(string bodyPart)
+        {
+            var toFocalAngle = _bodyPartsToFocalRoation[bodyPart] * _bodyParts[bodyPart].transform.right;
+            var angleFromLeft = Vector3.Angle(toFocalAngle, Vector3.left);
+            var angleFromUp = Vector3.Angle(toFocalAngle, Vector3.up);
+            var angleFromDown = Vector3.Angle(toFocalAngle, Vector3.down);
+            var angleFromRight = Vector3.Angle(toFocalAngle, Vector3.right);
+            var angleFromForward = Vector3.Angle(toFocalAngle, Vector3.forward);
+            var angleFromBack = Vector3.Angle(toFocalAngle, Vector3.back);
+            print ($"{bodyPart}: l: {angleFromLeft}, r: {angleFromRight}, f: {angleFromForward}, b: {angleFromBack}, u: {angleFromUp}, d: {angleFromDown}");
+        }
+
+        float GetLeftBonus(string bodyPart)
+        {
+            var bonus = GetDirectionBonus(bodyPart, Vector3.left);
+            // if (ShowMonitor)
+            //     Monitor.Log($"left[{bodyPart}] Bonus", bonus, MonitorType.text);
+            // print (bonus);
+            return bonus;
+        }       
+        float GetRightBonus(string bodyPart)
+        {
+            var bonus = GetDirectionBonus(bodyPart, Vector3.right);
+            // if (ShowMonitor)
+            //     Monitor.Log($"right[{bodyPart}] Bonus", bonus, MonitorType.text);
+            // print (bonus);
+            return bonus;
+        }       
+        float GetForwardBonus(string bodyPart)
+        {
+            var bonus = GetDirectionBonus(bodyPart, Vector3.forward);
+            // if (ShowMonitor)
+            //     Monitor.Log($"forward[{bodyPart}] Bonus", bonus, MonitorType.text);
+            // print (bonus);
+            return bonus;
         }
         float GetHeightPenality(float maxHeight)
         {
             var height = GetHeight();
             var heightPenality = maxHeight - height;
 			heightPenality = Mathf.Clamp(heightPenality, 0f, maxHeight);
-            if (ShowMonitor) {
-                Monitor.Log("height", height, MonitorType.text);
-                Monitor.Log("heightPenality", heightPenality, MonitorType.text);
-            }
+            // if (ShowMonitor) {
+            //     Monitor.Log("height", height, MonitorType.text);
+            //     Monitor.Log("heightPenality", heightPenality, MonitorType.text);
+            // }
             return heightPenality;
         }
         void KillJointPower(string[] hints)
@@ -365,14 +416,23 @@ namespace MlaMujocoUnity {
 				.Sum();
             return effort;            
         }
-        float GetEffort()
+        float GetEffort(string[] ignorJoints = null)
         {
-			var effort = _actions
-				.Select(x=>Mathf.Pow(Mathf.Abs(x),2))
-				.Sum();
-            // if (ShowMonitor)
-                // Monitor.Log("effort", effort, MonitorType.text);
-            return effort;
+            double effort = 0;
+            for (int i = 0; i < _actions.Count; i++)
+            {
+                var name = _mujocoController.MujocoJoints[i].JointName;
+                var jointEffort = Mathf.Pow(Mathf.Abs(_actions[i]),2);
+                if (!ignorJoints.Contains(name))
+                    effort += jointEffort;
+            }
+            return (float)effort;
+			// var effort = _actions
+			// 	.Select(x=>Mathf.Pow(Mathf.Abs(x),2))
+			// 	.Sum();
+            // // if (ShowMonitor)
+            //     // Monitor.Log("effort", effort, MonitorType.text);
+            // return effort;
         }
         float GetEffortSum()
         {
@@ -469,18 +529,36 @@ namespace MlaMujocoUnity {
             float heightPenality = GetHeightPenality(1.2f);
             float shouldersUprightBonus = GetUprightBonus("shoulders") / 2;
             float pelvisUprightBonus = GetUprightBonus("pelvis") / 2;
-            float effort = GetEffort();
-            // var effortPenality = 0.1f * (float)effort;
-            var effortPenality = 0.02f * (float)effort;
-            // var armPenalty = 0.1f * (float)GetHumanoidArmEffort();
+            // float headForwardBonus = GetForwardBonus("shoulders") / 2;
+            float headForwardBonus = GetForwardBonus("head") / 2;
+            float pelvisForwardBonus = GetForwardBonus("pelvis") / 2;
+            
+            float leftThighPenality = Mathf.Abs(GetLeftBonus("left_thigh"));
+            float rightThighPenality = Mathf.Abs(GetRightBonus("right_thigh"));
+            float leftUarmPenality = Mathf.Abs(GetLeftBonus("left_uarm"));
+            float rightUarmPenality = Mathf.Abs(GetRightBonus("right_uarm"));
+            float limbPenalty = leftThighPenality + rightThighPenality + leftUarmPenality + rightUarmPenality;
+            limbPenalty = Mathf.Min(0.5f, limbPenalty);
+            // GetDirectionDebug("right_thigh");
+            float rightThighBonus = Mathf.Abs(GetUprightBonus("right_thigh")) / 2;
+            float leftThighBonus = Mathf.Abs(GetUprightBonus("left_thigh")) / 2;
+            float thighBonus = Mathf.Min(0.25f, leftThighBonus+rightThighBonus);
+
+            float effort = GetEffort(new string []{"right_hip_y", "left_hip_y"});
+            var effortPenality = 0.2f * (float)effort;
 			var reward = velocity 
                 + shouldersUprightBonus
                 + pelvisUprightBonus
+                + headForwardBonus
+                + pelvisForwardBonus
+                + thighBonus
                 - heightPenality
-			    - effortPenality;
+			    - effortPenality
+                - limbPenalty;
                 // - armPenalty;
             if (ShowMonitor) {
-                var hist = new []{reward,velocity, shouldersUprightBonus, pelvisUprightBonus,- heightPenality,-effortPenality}.ToList();
+                // var hist = new []{reward,velocity, shouldersUprightBonus, pelvisUprightBonus, headForwardBonus,- heightPenality,-effortPenality}.ToList();
+                var hist = new []{reward,velocity, shouldersUprightBonus, pelvisUprightBonus, headForwardBonus, pelvisForwardBonus, thighBonus,- heightPenality,-effortPenality, -limbPenalty}.ToList();
                 Monitor.Log("rewardHist", hist, MonitorType.hist);
             }
 			return reward;            
