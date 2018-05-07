@@ -139,8 +139,8 @@ namespace MujocoUnity
 			// var offset = end - start;
 			// var position = start + (offset / 2.0f);
 			var height = offset.magnitude;
-			collider.height = height+(width*2);
-			collider.radius = width;
+			collider.height = height+(width*2) * .90f;
+			collider.radius = width * .90f;
 			procCap.height = height+(width);
 			procCap.radius = width;
 			procCap.CreateMesh();
