@@ -273,7 +273,7 @@ namespace MlaMujocoUnity {
             {
                 Done();
                 //var reward = 0;
-                var reward = -100f;
+                var reward = -1f;
                 SetReward(reward);
             }
             if (!IsDone())
