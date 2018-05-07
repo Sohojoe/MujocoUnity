@@ -422,9 +422,10 @@ namespace MlaMujocoUnity {
             for (int i = 0; i < Actions.Count; i++)
             {
                 var name = _mujocoController.MujocoJoints[i].JointName;
-                var jointEffort = Mathf.Pow(Mathf.Abs(_actions[i]),2);
-                if (!ignorJoints.Contains(name))
-                    effort += jointEffort;
+                if (ignorJoints != null && ignorJoints.Contains(name))
+                    continue;
+                var jointEffort = Mathf.Pow(Mathf.Abs(Actions[i]),2);
+                effort += jointEffort;
             }
             return (float)effort;
 			// var effort = _actions
@@ -433,6 +434,21 @@ namespace MlaMujocoUnity {
             // // if (ShowMonitor)
             //     // Monitor.Log("effort", effort, MonitorType.text);
             // return effort;
+        }
+        float GetJointsAtLimitPenality(string[] ignorJoints = null)
+        {
+            int atLimitCount = 0;
+            for (int i = 0; i < Actions.Count; i++)
+            {
+                var name = _mujocoController.MujocoJoints[i].JointName;
+                if (ignorJoints != null && ignorJoints.Contains(name))
+                    continue;
+                bool atLimit = Mathf.Abs(Actions[i]) >= 1f;
+                if (atLimit)
+                    atLimitCount++;
+            }
+            float penality = atLimitCount * 0.2f;
+            return (float)penality;            
         }
         float GetEffortSum()
         {
@@ -540,12 +556,13 @@ namespace MlaMujocoUnity {
             float limbPenalty = leftThighPenality + rightThighPenality + leftUarmPenality + rightUarmPenality;
             limbPenalty = Mathf.Min(0.5f, limbPenalty);
             // GetDirectionDebug("right_thigh");
-            float rightThighBonus = Mathf.Abs(GetUprightBonus("right_thigh")) / 2;
-            float leftThighBonus = Mathf.Abs(GetUprightBonus("left_thigh")) / 2;
-            float thighBonus = Mathf.Min(0.25f, leftThighBonus+rightThighBonus);
-
-            float effort = GetEffort(new string []{"right_hip_y", "left_hip_y"});
-            var effortPenality = 0.2f * (float)effort;
+            float rightThighBonus = GetUprightBonus("right_thigh");
+            float leftThighBonus = GetUprightBonus("left_thigh");
+            float thighBonus = Mathf.Abs(Mathf.Max(leftThighBonus, rightThighBonus));
+            thighBonus = Mathf.Min(0.25f, thighBonus  / 2);
+            var jointsAtLimitPenality = GetJointsAtLimitPenality();
+            float effort = GetEffort(new string []{"right_hip_y", "right_knee", "left_hip_y", "left_knee"});
+            var effortPenality = 0.5f * (float)effort;
 			var reward = velocity 
                 + shouldersUprightBonus
                 + pelvisUprightBonus
@@ -553,12 +570,16 @@ namespace MlaMujocoUnity {
                 + pelvisForwardBonus
                 + thighBonus
                 - heightPenality
-			    - effortPenality
-                - limbPenalty;
+                - limbPenalty
+                - jointsAtLimitPenality
+			    - effortPenality;
                 // - armPenalty;
             if (ShowMonitor) {
                 // var hist = new []{reward,velocity, shouldersUprightBonus, pelvisUprightBonus, headForwardBonus,- heightPenality,-effortPenality}.ToList();
-                var hist = new []{reward,velocity, shouldersUprightBonus, pelvisUprightBonus, headForwardBonus, pelvisForwardBonus, thighBonus,- heightPenality,-effortPenality, -limbPenalty}.ToList();
+                var hist = new []{
+                    reward, velocity, shouldersUprightBonus, pelvisUprightBonus, 
+                    headForwardBonus, pelvisForwardBonus, thighBonus, 
+                    -heightPenality, -limbPenalty, -jointsAtLimitPenality, -effortPenality}.ToList();
                 Monitor.Log("rewardHist", hist, MonitorType.hist);
             }
 			return reward;            
