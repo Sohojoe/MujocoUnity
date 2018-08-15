@@ -4,6 +4,20 @@
 
 Presented March 19th, 2018 at the AI Summit - Game Developer Conference 2018 - http://schedule.gdconf.com/session/beyond-bots-making-machine-learning-accessible-and-useful/856147
 
+---
+## IMPORTANT: Active development has moved.... ##
+* See: this PR - https://github.com/Unity-Technologies/ml-agents/pull/771
+* Active development branch - https://github.com/Sohojoe/ml-agents/tree/develop-feature-mujoco-unity
+* Documentation - https://github.com/Sohojoe/ml-agents/blob/develop-feature-mujoco-unity/docs/Mujoco-Unity.md
+* Projects using active branch - 
+  * https://github.com/Sohojoe/ActiveRagdollAssaultCourse 
+  * https://github.com/Sohojoe/ActiveRagdollControllers
+
+![MujocoUnity](https://github.com/Sohojoe/ml-agents/blob/develop-feature-mujoco-unity/docs/images/MujocoUnityBanner.gif)
+
+----
+Legacy readme...
+
 ### v0.2 
 supports Unity ml-agents ([instructions](Docs/ml_agents.md))
 
