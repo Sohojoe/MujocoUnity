@@ -5,13 +5,8 @@
 Presented March 19th, 2018 at the AI Summit - Game Developer Conference 2018 - http://schedule.gdconf.com/session/beyond-bots-making-machine-learning-accessible-and-useful/856147
 
 ---
-## IMPORTANT: Active development has moved.... ##
-* See: this PR - https://github.com/Unity-Technologies/ml-agents/pull/771
-* Active development branch - https://github.com/Sohojoe/ml-agents/tree/develop-feature-mujoco-unity
-* Documentation - https://github.com/Sohojoe/ml-agents/blob/develop-feature-mujoco-unity/docs/Mujoco-Unity.md
-* Projects using active branch - 
-  * https://github.com/Sohojoe/ActiveRagdollAssaultCourse 
-  * https://github.com/Sohojoe/ActiveRagdollControllers
+## IMPORTANT: Active development has moved to [Marathon-envs](https://github.com/Unity-Technologies/marathon-envs) ##
+* This project is now a add-on for Unity ML-Agents Toolkit and is still being maintained and supported. See the new repro here - https://github.com/Unity-Technologies/marathon-envs 
 
 ![MujocoUnity](https://github.com/Sohojoe/ml-agents/blob/develop-feature-mujoco-unity/docs/images/MujocoUnityBanner.gif)
 
